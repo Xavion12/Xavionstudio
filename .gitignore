@@ -1,0 +1,35 @@
+# Secrets — never commit
+.dev.vars
+.env
+.env.*
+!.env.example
+!.dev.vars.example
+admin.sql
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+python_modules/
+.local/
+
+# Wrangler / Node
+.wrangler/
+node_modules/
+dist/
+*.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local runtime tooling
+.uv/
+.venv-workers/
+
+# Files moved aside during refactors
+.snapshots/
+backend/.setup-token.txt

@@ -20,6 +20,7 @@ import type {
   MemberListItem,
   MemberProfile,
   MemberReport,
+  MemberReportSection,
   MessagesOverview,
   SendChannel,
   MemberStatusAction,
@@ -172,6 +173,9 @@ export const membersApi = {
   activity: (id: number) => get<{ items: ActivityEvent[] }>(`/members/${id}/activity`),
   /** Attendance, payments, memberships, progress and workouts for a period (at most a year). */
   report: (id: number, from: string, to: string) => get<MemberReport>(`/members/${id}/report`, { from, to }),
+  /** A signed 30-day link to the report PDF, for WhatsApp. */
+  reportLink: (id: number, from: string, to: string, sections: MemberReportSection[]) =>
+    post<{ path: string }>(`/members/${id}/report/link`, { from, to, sections }),
   qr: (id: number) => get<{ member_id: number; member_code: string; name: string; payload: string }>(`/members/${id}/qr`),
   resetQr: (id: number) => post<{ member_id: number; payload: string }>(`/members/${id}/qr/reset`),
   /** Give, reset or re-enable the member's app login; without a password a one-time one is generated. */
@@ -282,6 +286,12 @@ export const notificationsApi = {
 export const messagesApi = {
   /** Which of WhatsApp / email have their keys on the server (admin; used by the send dialogs). */
   overview: () => get<MessagesOverview>('/messages'),
+}
+
+/** What a share link opens (no sign-in needed). */
+export const publicApi = {
+  receipt: (token: string) => get<Receipt>(`/public/receipts/${encodeURIComponent(token)}`),
+  memberReport: (token: string) => get<MemberReport>(`/public/member-reports/${encodeURIComponent(token)}`),
 }
 
 export const portalApi = {

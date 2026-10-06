@@ -199,6 +199,8 @@ export interface RecordPaymentResult {
 export interface Receipt {
   gym: { name: string; address: string; phone: string; email: string; gst_number: string; sac_code: string; /** Name on the digital signature. */ signatory: string }
   receipt_number: string
+  /** Signed link to this receipt's PDF (/r/...), opens without signing in. */
+  share_path: string
   payment_number: string
   member_code: string
   member_name: string
@@ -785,6 +787,8 @@ export interface MemberReport {
   payments: Payment[] | null
   progress: Progress
   workouts: Workout[]
+  /** Set when opened from a share link: the sections staff chose. */
+  sections?: MemberReportSection[]
 }
 
 export type MemberReportSection = 'membership' | 'attendance' | 'payments' | 'progress' | 'workouts'

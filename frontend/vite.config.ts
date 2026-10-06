@@ -106,7 +106,7 @@ export default defineConfig(({ mode }) => {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
     // With VITE_API_URL empty the app calls /api on its own origin; the dev server forwards
-    // those calls to the local Worker, the same shape as a gymname.com/api/* Worker route.
+    // those calls to the local Worker, the same shape as the app.xavionfitness.in/api/* requests in production.
     server: { port: 5173, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8787' } },
     preview: { port: 4173 },
     build: {

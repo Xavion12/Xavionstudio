@@ -1,4 +1,4 @@
--- SmartGym · 0007 · Several visits a day
+-- Xavion Fitness · 0007 · Several visits a day
 -- A member may check in and out more than once a day (morning, afternoon, night). Every visit
 -- is its own row; member stats, the dashboard and reports still count days present once per day.
 --

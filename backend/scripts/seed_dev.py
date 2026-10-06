@@ -1,7 +1,7 @@
-"""DEVELOPMENT-ONLY demo data for SmartGym.
+"""DEVELOPMENT-ONLY demo data for Xavion Fitness.
 
     python scripts/seed_dev.py > seed/dev_seed.sql
-    npx wrangler d1 execute smartgym-db --local --file=seed/dev_seed.sql
+    npx wrangler d1 execute smartgym --local --file=seed/dev_seed.sql
 
 Password hashes use the AUTH_SECRET pepper of the local Worker: taken from --auth-secret, the
 AUTH_SECRET environment variable, or backend/.dev.vars (in that order).
@@ -92,7 +92,7 @@ def main() -> None:
     rng = random.Random(args.seed)
     today: date = args.today
     secret = auth_secret(args.auth_secret)
-    out: list[str] = ["-- SmartGym DEVELOPMENT seed data. Do NOT load into production."]
+    out: list[str] = ["-- Xavion Fitness DEVELOPMENT seed data. Do NOT load into production."]
 
     def insert(table: str, row: dict) -> None:
         out.append(f"INSERT OR IGNORE INTO {table} ({', '.join(row)}) VALUES ({', '.join(q(v) for v in row.values())});")
@@ -101,15 +101,15 @@ def main() -> None:
         return hash_password_sync(text, secret=secret, iterations=args.iterations)
 
     now = ts(today, 9)
-    for key, value in (("gym_name", "SmartGym Fitness"), ("gym_address", "2nd Floor, MG Road, Bengaluru 560001"),
-                       ("gym_phone", "+91 80 4000 1234"), ("gym_email", "hello@smartgym.local"), ("upi_id", "smartgym@okaxis"),
-                       ("upi_name", "SmartGym Fitness")):
+    for key, value in (("gym_name", "Xavion Fitness Studio"), ("gym_address", "1st Floor, TPG Enclaves Apartment, Thindal Medu, Thindal, Erode – 638012"),
+                       ("gym_phone", "+91 80 4000 1234"), ("gym_email", "hello@xavionfitness.local"), ("upi_id", "xavionfitness@okaxis"),
+                       ("upi_name", "Xavion Fitness Studio")):
         insert("settings", {"key": key, "value": value, "updated_at": now})
 
     passwords = {"admin": "Admin@123", "staff": "Desk@1234", "trainer": "Coach@1234", "member": "Member@123"}
-    insert("users", {"id": 1, "role_id": 1, "name": "Admin", "email": "admin@smartgym.local", "password_hash": pw(passwords["admin"]),
+    insert("users", {"id": 1, "role_id": 1, "name": "Admin", "email": "admin@xavionfitness.local", "password_hash": pw(passwords["admin"]),
                      "created_at": now, "updated_at": now})
-    insert("users", {"id": 2, "role_id": 2, "name": "Front Desk", "email": "desk@smartgym.local", "password_hash": pw(passwords["staff"]),
+    insert("users", {"id": 2, "role_id": 2, "name": "Front Desk", "email": "desk@xavionfitness.local", "password_hash": pw(passwords["staff"]),
                      "created_at": now, "updated_at": now})
     insert("users", {"id": 3, "role_id": 3, "name": TRAINERS[0][0], "password_hash": pw(passwords["trainer"]), "created_at": now,
                      "updated_at": now})
@@ -121,7 +121,7 @@ def main() -> None:
                                     "status": "ACTIVE", "created_at": ts(today - timedelta(days=300), 10), "updated_at": now})
     for tid, (name, spec) in enumerate(TRAINERS, start=1):
         insert("trainers", {"id": tid, "user_id": 3 if tid == 1 else None, "name": name, "phone": f"98450{tid:05d}",
-                            "email": f"trainer{tid}@smartgym.local", "specialization": spec,
+                            "email": f"trainer{tid}@xavionfitness.local", "specialization": spec,
                             "joining_date": (today - timedelta(days=400 - tid * 30)).isoformat(), "status": "ACTIVE",
                             "created_at": ts(today - timedelta(days=400), 10), "updated_at": now})
 
@@ -291,13 +291,13 @@ def main() -> None:
                                 "description": desc, "expense_date": d.isoformat(), "created_by": 1, "created_at": stamp,
                                 "updated_at": stamp})
 
-    insert("notifications", {"user_id": 4, "type": "WELCOME", "message": "Hi Aarav, welcome to SmartGym Fitness! Your member ID is GYM000001.",
+    insert("notifications", {"user_id": 4, "type": "WELCOME", "message": "Hi Aarav, welcome to Xavion Fitness Studio! Your member ID is GYM000001.",
                              "status": "READ", "created_at": now, "read_at": now})
-    insert("notifications", {"user_id": 4, "type": "TRAINER_ASSIGNED", "message": "Hi Aarav, Arjun Menon is now your trainer at SmartGym Fitness.",
+    insert("notifications", {"user_id": 4, "type": "TRAINER_ASSIGNED", "message": "Hi Aarav, Arjun Menon is now your trainer at Xavion Fitness Studio.",
                              "status": "UNREAD", "created_at": now})
     out.append("")
     out.append("-- Demo logins (development only):")
-    for role, login in (("admin", "admin@smartgym.local"), ("staff", "desk@smartgym.local"), ("trainer", "trainer1@smartgym.local"),
+    for role, login in (("admin", "admin@xavionfitness.local"), ("staff", "desk@xavionfitness.local"), ("trainer", "trainer1@xavionfitness.local"),
                         ("member", "GYM000001")):
         out.append(f"--   {role:<8} {login:<26} {passwords[role]}")
     sys.stdout.write("\n".join(out) + "\n")

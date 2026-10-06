@@ -4,7 +4,7 @@ import type { ApiErrorShape } from '@/types'
 /**
  * Only public configuration lives in the frontend (VITE_API_URL). No secrets.
  * Empty = same origin (the Worker serves /api on the app's domain, or the Vite dev proxy);
- * otherwise the Worker's origin, e.g. https://api.gymname.com.
+ * otherwise the Worker's origin, e.g. https://app.xavionfitness.in.
  */
 export const API_BASE = String(import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '')
 

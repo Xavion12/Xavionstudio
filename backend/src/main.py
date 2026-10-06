@@ -1,4 +1,4 @@
-"""Cloudflare Python Worker entrypoint for the SmartGym API.
+"""Cloudflare Python Worker entrypoint for the Xavion Fitness API.
 
 - fetch     -> FastAPI (ASGI) running inside the Worker, with the D1 binding as ``env.DB``
 - scheduled -> the daily Cron Trigger (statuses, reminders, clean-up, storage snapshot) and the

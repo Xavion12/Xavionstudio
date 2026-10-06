@@ -44,7 +44,7 @@ def test_backup_verify_archive_then_restore(client, admin, plans, db):
                                                 "period_from": "2026-06-01", "period_to": "2026-07-01"}, headers=admin)
     assert created.status_code == 201, created.text
     manifest = created.json()
-    assert manifest["backup"]["status"] == "CREATED" and manifest["backup"]["file_name"].startswith("SmartGym_Backup_2026-06-01")
+    assert manifest["backup"]["status"] == "CREATED" and manifest["backup"]["file_name"].startswith("Xavion_Fitness_Studio_Backup_2026-06-01")
     assert {t["table"] for t in manifest["tables"]} >= {"members", "attendance", "payments", "refunds", "memberships", "expenses"}
     files = _download(client, admin, manifest)
     assert len(files["attendance"]) == 1 and len(files["members"]) == 1

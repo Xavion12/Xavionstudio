@@ -1,4 +1,4 @@
--- SmartGym · 0002 · Payments and refunds
+-- Xavion Fitness · 0002 · Payments and refunds
 -- No payment gateway in Version 1: cash, direct UPI (UTR verified by staff), bank transfer
 -- and card payments taken on the gym's own terminal (recorded manually).
 -- Never stored: card numbers, CVV, PINs, UPI PINs, bank credentials, screenshots or large JSON.
@@ -30,7 +30,7 @@ CREATE TABLE payments (
     CHECK (payment_method NOT IN ('UPI', 'BANK_TRANSFER') OR transaction_reference IS NOT NULL)
 );
 
--- Refunds are only RECORDED: money goes back outside SmartGym (cash, UPI, bank).
+-- Refunds are only RECORDED: money goes back outside Xavion Fitness (cash, UPI, bank).
 CREATE TABLE refunds (
     id               INTEGER PRIMARY KEY,
     payment_id       INTEGER NOT NULL UNIQUE REFERENCES payments (id),

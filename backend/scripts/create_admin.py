@@ -1,7 +1,7 @@
 """Create the first admin account (prints SQL; nothing is sent anywhere).
 
-    python scripts/create_admin.py --email owner@gymname.com --name "Gym Owner" > admin.sql
-    npx wrangler d1 execute smartgym-db --remote --file=admin.sql
+    python scripts/create_admin.py --email owner@xavionfitness.in --name "Gym Owner" > admin.sql
+    npx wrangler d1 execute smartgym --remote --file=admin.sql
     del admin.sql   (or rm admin.sql)
 
 You are asked for the admin password and for the AUTH_SECRET you stored as a Worker secret

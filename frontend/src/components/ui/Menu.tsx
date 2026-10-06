@@ -78,7 +78,7 @@ export function Menu({ trigger, items, align = 'right', label }: { trigger: (pro
   )
 }
 
-/** Initials avatar — SmartGym stores no photos. */
+/** Initials avatar — Xavion Fitness stores no photos. */
 export function Avatar({ name, size = 'md', className }: { name: string; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
   const sizes = { sm: 'size-8 text-[11px]', md: 'size-10 text-sm', lg: 'size-12 text-base', xl: 'size-16 text-xl' }
   return (

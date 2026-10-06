@@ -1,4 +1,4 @@
--- SmartGym · 0006 · Business rules enforced by the database itself
+-- Xavion Fitness · 0006 · Business rules enforced by the database itself
 -- SQLite cannot ALTER TABLE ... ADD CONSTRAINT, so rules are unique (partial) indexes and
 -- small guard triggers. Guards fire only for the rows being written: no extra read cost.
 

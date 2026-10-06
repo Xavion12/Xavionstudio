@@ -1,4 +1,4 @@
-/* SmartGym service worker (generated at build time from src/sw/sw.template.js).
+/* Xavion Fitness service worker (generated at build time from src/sw/sw.template.js).
  *
  * - App shell + entry bundle are precached for instant, offline-capable reopening.
  * - Hashed /assets/* are cache-first (immutable); lazy route chunks are cached on first use.

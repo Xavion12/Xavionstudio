@@ -11,7 +11,7 @@ from typing import Any
 
 from .base import Repository
 
-# Every table SmartGym owns (monitoring covers all of them).
+# Every table Xavion Fitness owns (monitoring covers all of them).
 TABLES = (
     "members", "users", "trainers", "membership_plans", "memberships", "payments", "refunds", "attendance",
     "workout_plans", "workout_exercises", "body_measurements", "notifications", "expenses", "settings",

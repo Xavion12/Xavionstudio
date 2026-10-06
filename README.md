@@ -1,4 +1,4 @@
-# SmartGym
+# Xavion Fitness
 
 A cloud gym management system that runs entirely on Cloudflare's **free plan**:
 
@@ -122,8 +122,8 @@ frontend/                      React PWA for Cloudflare Pages
 cd backend
 cp .dev.vars.example .dev.vars          # local-only secrets, git-ignored
 uv sync                                 # dev tools: pywrangler, pytest …
-npx wrangler d1 migrations apply smartgym-db --local
-npx wrangler d1 execute smartgym-db --local --file=seed/dev_seed.sql   # demo data (optional)
+npx wrangler d1 migrations apply smartgym --local
+npx wrangler d1 execute smartgym --local --file=seed/dev_seed.sql   # demo data (optional)
 uv run pywrangler dev                   # http://127.0.0.1:8787/api/health
 ```
 
@@ -152,9 +152,9 @@ npm run dev                             # http://localhost:5173 — Vite forward
 
 | Role | Sign in with | Password |
 |---|---|---|
-| Admin | `admin@smartgym.local` | `Admin@123` |
-| Staff | `desk@smartgym.local` | `Desk@1234` |
-| Trainer | `trainer1@smartgym.local` | `Coach@1234` |
+| Admin | `admin@xavionfitness.local` | `Admin@123` |
+| Staff | `desk@xavionfitness.local` | `Desk@1234` |
+| Trainer | `trainer1@xavionfitness.local` | `Coach@1234` |
 | Member | `GYM000001` | `Member@123` |
 
 > The seed creates **fake** people, payments and well-known passwords. Never load it into production.
@@ -178,69 +178,23 @@ The smoke test signs in as every role and exercises members, desk payments (with
 
 ## Deploy to Cloudflare
 
-Replace `gymname.com` with your domain (the zone must be on Cloudflare for custom domains).
+**Full step-by-step guide: [DEPLOY.md](DEPLOY.md).** In short:
 
-### 1. Database
-
-```bash
-cd backend
-npx wrangler login
-npx wrangler d1 create smartgym-db                 # copy the printed database_id into wrangler.jsonc
-npx wrangler d1 migrations apply smartgym-db --remote
-```
-
-### 2. Worker settings and secrets
-
-In `backend/wrangler.jsonc`, set `ALLOWED_ORIGINS` to your frontend origin(s). Then add the secrets (never in `vars`, never in the frontend, never in Git):
+| | |
+|---|---|
+| Address | **https://app.xavionfitness.in** — one Worker (`smartgym-api`) on a Workers custom domain |
+| What it serves | `/api/*` → the Python API; everything else → the React app (`frontend/dist`) |
+| Database | Cloudflare D1 **`smartgym`**, bound as `DB` (id in `backend/wrangler.jsonc`) |
+| Secrets | `JWT_SECRET`, `AUTH_SECRET` (required); `SETUP_TOKEN` (first admin only); `RESEND_API_KEY`, `EMAIL_FROM` (automatic emails) |
 
 ```bash
-npx wrangler secret put JWT_SECRET      # required: 32+ random characters, e.g. `openssl rand -base64 48`
-npx wrangler secret put AUTH_SECRET     # required: 32+ random characters (password pepper)
-```
-
-The Worker refuses to start in production with a missing or weak `JWT_SECRET`/`AUTH_SECRET`, or with a `*` CORS origin. Keep `AUTH_SECRET` stable: changing it invalidates every password.
-
-### 3. Deploy the API
-
-```bash
+cd frontend && npm ci && npm run build          # the app the Worker serves
+cd ../backend
+npx wrangler d1 migrations apply smartgym --remote
 uv run pywrangler deploy
 ```
 
-Choose **one** way to serve it:
-
-- **Same origin (recommended).** Add a Worker route: `"routes": [{ "pattern": "gymname.com/api/*", "zone_name": "gymname.com" }]` and build the frontend with `VITE_API_URL` empty. No CORS preflights. Check `https://gymname.com/api/health`.
-- **API subdomain.** `"routes": [{ "pattern": "api.gymname.com", "custom_domain": true }]` and `VITE_API_URL=https://api.gymname.com`.
-
-### 4. Create the first admin
-
-- **Script (recommended):**
-  ```bash
-  uv run python scripts/create_admin.py --email owner@gymname.com --name "Gym Owner" > admin.sql   # prompts for the password and AUTH_SECRET
-  npx wrangler d1 execute smartgym-db --remote --file=admin.sql
-  rm admin.sql
-  ```
-- **One-time setup page:** set a `SETUP_TOKEN` secret and open `https://gymname.com/setup`. It works only while no admin exists. Delete the secret afterwards.
-
-### 5. Deploy the frontend (Cloudflare Pages)
-
-- Git integration: root `frontend`, build `npm run build`, output `dist`, variable `VITE_API_URL` (empty or the API origin).
-- Or: `cd frontend && npm run build && npx wrangler pages deploy dist --project-name smartgym`
-
-The build generates `_headers` with the CSP (including your API origin when it's separate), security headers and immutable caching for hashed assets.
-
-### Updating a live site (this release: migrations 0007 and 0008)
-
-A push to `main` that touches `backend/` deploys the Worker through GitHub Actions; **it does not apply migrations**. Run them yourself, in this order:
-
-1. Deploy the Worker (push, or `uv run pywrangler deploy`). The new Worker works with the old schema: until step 2, a member's second visit on the same day is refused with a clear message.
-2. `cd backend && npx wrangler d1 migrations apply smartgym-db --remote`: 0007 drops the one-row-per-day index (several visits a day), 0008 adds the small `dashboard_cache` table.
-3. Deploy the frontend (`npm run build`, then `npx wrangler pages deploy dist --project-name smartgym --branch main`).
-
-### 6. After deploying
-
-1. **Settings → Gym:** name, address, phone. **Settings → Payments:** your UPI ID and payee name.
-2. Create membership plans, team accounts and trainers.
-3. **Data & Backup:** check storage; download your first backup.
+Updating later: push to `main` (GitHub Actions builds, tests, migrates and deploys — needs the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets), or run the three commands above.
 
 ---
 
@@ -256,7 +210,7 @@ A push to `main` that touches `backend/` deploys the Worker through GitHub Actio
 | `DEFAULT_COUNTRY_CODE` | `91` | Phone normalisation |
 | `D1_MAX_BYTES` | `500000000` | Storage limit used for the usage meter (D1 free plan: 500 MB per database) |
 | `D1_TIME_TRAVEL_DAYS` | `7` | Time Travel window (free plan: 7 days) |
-| `D1_DATABASE_NAME` | `smartgym-db` | Shown in the Time Travel CLI command |
+| `D1_DATABASE_NAME` | `smartgym` | Shown in the Time Travel CLI command |
 | `PASSWORD_ITERATIONS` | `20000` | PBKDF2 rounds (1,000–100,000); sized for the free plan's CPU budget |
 | Optional | | `STAFF_TOKEN_HOURS` (12) · `REMEMBER_TOKEN_DAYS` (7) · `MEMBER_TOKEN_DAYS` (30) |
 
@@ -295,7 +249,7 @@ Gym profile · member code prefix · Direct UPI (on/off, UPI ID, payee name) · 
 | `CASH` | Staff record it at the desk → PAID, membership active immediately |
 | `UPI` | At the desk (staff enter the 12-digit UTR) → PAID; or from the member app → **PENDING** until staff approve |
 | `BANK_TRANSFER` | Staff record it with the bank reference → PAID |
-| `CARD_MANUAL` | Card taken on the gym's own terminal; staff record the slip number → PAID. **SmartGym never sees card numbers, CVV, PINs or UPI PINs** |
+| `CARD_MANUAL` | Card taken on the gym's own terminal; staff record the slip number → PAID. **Xavion Fitness never sees card numbers, CVV, PINs or UPI PINs** |
 
 **Direct UPI from the member app:**
 1. The member picks a plan, pays the gym's UPI ID (QR or *Open UPI app*) and enters the 12-digit UTR → payment **PENDING**.
@@ -407,6 +361,8 @@ Reports — **members, memberships, payments, attendance, expenses** (expenses: 
 
 **Payment receipt (PDF):** the gym logo (`frontend/public/receipt-logo.jpg` — replace this file to change it) and the gym's address, phone, email, SAC and GSTIN; *Bill to* (member, ID, phone), receipt number and bill date; the plan with its from / till dates, the plan price, **discount** (plan price at the time of payment minus what was paid), and — when a GST rate is set — **taxable amount, CGST + SGST and tax** (GST is included in the price: ₹11,000 at 5% = ₹10,476.19 + ₹523.81); the payment mode with the **amount in words**; the gym's **terms and conditions**; a **digital signature** (the "Signed by" name in a handwriting style, "Digitally signed by …" with the date and time — or a scan of the real signature if `frontend/public/receipt-signature.jpg` is added) above the *Authorised Signatory* line, with a round, slightly tilted **PAID stamp** (gym name, date) pressed beside it. Set GSTIN, SAC, GST rate, "Signed by" and the terms in **Settings → Payments → Receipt & GST**.
 
+**PDF links in WhatsApp messages:** WhatsApp links can carry text only, so receipt and report messages end with a link to the PDF (`https://app.xavionfitness.in/r/…` for receipts, `/mr/…` for member reports). The member taps it and gets the signed, stamped PDF without signing in. Links are signed with a key derived from `JWT_SECRET` (they can't be guessed or edited); report links expire after 30 days. On phones, **Share PDF** sends the file itself.
+
 **Every PDF is signed and stamped:** receipts (PAID / REFUNDED stamp), the Reports page PDFs and member reports (VERIFIED stamp) all carry the gym logo and end with *For <gym>*, the digital signature ("Signed by" in Settings → Payments → Receipt & GST) and the round stamp.
 
 **Member report:** on a member's page, **Report** → choose the period (this month, 3 or 12 months, or custom, up to a year) and tick what to include — membership & history, attendance, payments (admin / staff only), progress, workout plans → **Download PDF**, **Share PDF** (phones) or **Send on WhatsApp** (a summary typed into the member's chat). API: `GET /api/members/{id}/report?from=&to=`.
@@ -515,7 +471,7 @@ Twenty desks scanning the same member at the same moment record exactly one visi
 - **Brute force:** accounts lock for 15 minutes after 5 wrong passwords, at sign-in *and* on the change-password form (so a stolen session can't guess the current password), plus a per-IP Workers Rate Limiting binding (`LOGIN_LIMITER`, 10 sign-ins a minute per IP; members signing in together on the gym's Wi-Fi share one IP).
 - **Tokens:** HS256 JWTs with per-role lifetimes. A `token_version` makes password changes, *sign out everywhere*, disabling a user and revoking app access take effect (within 30 s on other isolates, which cache user records briefly). Temporary passwords must be changed at first sign-in.
 - **Authorisation:** role checks on every route; trainers limited to assigned members; members only reach `/api/me/*`; restore and Time Travel are admin-only and require explicit confirmation.
-- **No card data** is ever collected; UPI is paid directly to the gym, and SmartGym never asks for a UPI PIN.
+- **No card data** is ever collected; UPI is paid directly to the gym, and Xavion Fitness never asks for a UPI PIN.
 - **Web:** strict CSP (no third-party scripts, frames or plugins), HSTS (2 years), `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, `no-store` on API responses, explicit CORS allowlist, 256 KB body limit, unknown request fields rejected, formula-safe CSV exports.
 - **Errors:** human-readable messages; stack traces and SQL never reach the client.
 - **Secrets:** only as Worker secrets or in the git-ignored `.dev.vars`. D1 is reachable only through the Worker binding; the frontend has only `VITE_API_URL`.

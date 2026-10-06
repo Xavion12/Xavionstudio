@@ -138,7 +138,7 @@ def plans(client, admin) -> dict[str, dict]:
 
 @pytest.fixture
 def upi_enabled(client, admin):
-    response = client.put("/api/settings", json={"upi_enabled": True, "upi_id": "smartgym@upi", "upi_name": "SmartGym"}, headers=admin)
+    response = client.put("/api/settings", json={"upi_enabled": True, "upi_id": "xavionfitness@upi", "upi_name": "Xavion Fitness Studio"}, headers=admin)
     assert response.status_code == 200, response.text
 
 

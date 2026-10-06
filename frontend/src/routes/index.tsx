@@ -9,6 +9,7 @@ const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage'))
 const SetupPage = lazyPage(() => import('@/pages/auth/SetupPage'))
 const ChangePasswordPage = lazyPage(() => import('@/pages/auth/ChangePasswordPage'))
 const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'))
+const SharedDocumentPage = lazyPage(() => import('@/pages/public/SharedDocumentPage'))
 
 const DashboardPage = lazyPage(() => import('@/pages/dashboard/DashboardPage'))
 const TrainerDashboardPage = lazyPage(() => import('@/pages/trainer/TrainerDashboardPage'))
@@ -49,6 +50,9 @@ export const router = createBrowserRouter([
   { path: '/', element: <HomeRedirect /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/setup', element: <SetupPage /> },
+  // Share links sent on WhatsApp: a receipt or a member report PDF, no sign-in needed.
+  { path: '/r/:token', element: <SharedDocumentPage /> },
+  { path: '/mr/:token', element: <SharedDocumentPage /> },
   { path: '/account/password', element: guard(['ADMIN', 'STAFF', 'TRAINER', 'MEMBER'], <ChangePasswordPage />) },
   {
     element: guard(TEAM, <AppLayout />),

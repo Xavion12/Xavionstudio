@@ -61,13 +61,13 @@ def test_a_payment_sends_the_receipt_by_whatsapp_and_email_at_once(connected, ad
     assert [(r["channel"], r["event"], r["recipient"], r["status"]) for r in rows] == [
         ("WHATSAPP", "PAYMENT_RECEIVED", "919876543210", "SENT"), ("EMAIL", "PAYMENT_RECEIVED", "aarav@example.com", "SENT"),
     ]
-    assert json.loads(rows[0]["params"]) == {"first": "Aarav", "gym": "SmartGym", "amount": "₹1,500", "plan": "Monthly",
+    assert json.loads(rows[0]["params"]) == {"first": "Aarav", "gym": "Xavion Fitness Studio", "amount": "₹1,500", "plan": "Monthly",
                                              "start": "23 Sep 2026", "end": "22 Oct 2026", "number": payment["payment_number"]}
     [whatsapp] = _whatsapp(outgoing)
     assert whatsapp["to"] == "919876543210" and whatsapp["template"]["name"] == "payment_received"
-    assert _values(whatsapp) == ["Aarav", "₹1,500", "SmartGym", "Monthly", "23 Sep 2026", "22 Oct 2026", payment["payment_number"]]
+    assert _values(whatsapp) == ["Aarav", "₹1,500", "Xavion Fitness Studio", "Monthly", "23 Sep 2026", "22 Oct 2026", payment["payment_number"]]
     [email] = _emails(outgoing)
-    assert email["to"] == ["aarav@example.com"] and email["subject"] == "Payment received - SmartGym"
+    assert email["to"] == ["aarav@example.com"] and email["subject"] == "Payment received - Xavion Fitness Studio"
     assert "Monthly membership runs from 23 Sep 2026 to 22 Oct 2026" in email["text"]
 
 
@@ -102,9 +102,9 @@ def test_check_in_and_check_out_are_messaged(connected, admin, plans, db, outgoi
     assert client.post("/api/attendance", json={"member_id": member["id"], "action": "OUT"}, headers=admin).json()["result"] == "CHECKED_OUT"
 
     check_in, check_out = _whatsapp(outgoing)
-    assert check_in["template"]["name"] == "attendance_check_in" and _values(check_in) == ["Aarav", "SmartGym", "12:00 PM"]
-    assert check_out["template"]["name"] == "attendance_check_out" and _values(check_out) == ["Aarav", "SmartGym", "1:15 PM", "1 h 15 min"]
-    assert [e["subject"] for e in _emails(outgoing)] == ["Checked in at SmartGym", "Checked out of SmartGym"]
+    assert check_in["template"]["name"] == "attendance_check_in" and _values(check_in) == ["Aarav", "Xavion Fitness Studio", "12:00 PM"]
+    assert check_out["template"]["name"] == "attendance_check_out" and _values(check_out) == ["Aarav", "Xavion Fitness Studio", "1:15 PM", "1 h 15 min"]
+    assert [e["subject"] for e in _emails(outgoing)] == ["Checked in at Xavion Fitness Studio", "Checked out of Xavion Fitness Studio"]
 
 
 def test_welcome_reaches_members_without_the_app(connected, admin, db, outgoing):
@@ -112,7 +112,7 @@ def test_welcome_reaches_members_without_the_app(connected, admin, db, outgoing)
     _forget_setup(db, outgoing)
     member = create_member(client, admin, create_app_login=False)["member"]
     [welcome] = _whatsapp(outgoing, "welcome_member")
-    assert welcome["template"]["name"] == "welcome_member" and _values(welcome) == ["Aarav", "SmartGym", member["member_code"]]
+    assert welcome["template"]["name"] == "welcome_member" and _values(welcome) == ["Aarav", "Xavion Fitness Studio", member["member_code"]]
 
 
 def test_trainer_assignment_rejection_and_refund_are_messaged(connected, admin, plans, db, outgoing, upi_enabled):
@@ -134,10 +134,10 @@ def test_trainer_assignment_rejection_and_refund_are_messaged(connected, admin, 
     names = [m["template"]["name"] for m in _whatsapp(outgoing)]
     assert names == ["trainer_assigned", "payment_submitted", "payment_rejected", "payment_refunded"]
     trainer_msg, submitted_msg, rejected_msg, refunded_msg = _whatsapp(outgoing)
-    assert _values(trainer_msg) == ["Aarav", "Arjun Menon", "SmartGym"]
-    assert _values(submitted_msg) == ["Aarav", "₹4,000", "Quarterly", "SmartGym", "412345678901"]
-    assert _values(rejected_msg) == ["Aarav", "₹4,000", "412345678901", "No credit found in the bank statement.", "SmartGym"]
-    assert _values(refunded_msg) == ["Aarav", "₹1,500", paid["payment_number"], "SmartGym"]
+    assert _values(trainer_msg) == ["Aarav", "Arjun Menon", "Xavion Fitness Studio"]
+    assert _values(submitted_msg) == ["Aarav", "₹4,000", "Quarterly", "Xavion Fitness Studio", "412345678901"]
+    assert _values(rejected_msg) == ["Aarav", "₹4,000", "412345678901", "No credit found in the bank statement.", "Xavion Fitness Studio"]
+    assert _values(refunded_msg) == ["Aarav", "₹1,500", paid["payment_number"], "Xavion Fitness Studio"]
     assert all(r["status"] == "SENT" for r in _outbox(db))
 
 
@@ -213,7 +213,7 @@ def test_daily_reminders_are_sent_once(connected, admin, plans, db, outgoing):
         ("MEMBERSHIP_EXPIRED", "WHATSAPP", "919876500002", "SENT"),
     ]
     reminder = next(r for r in rows if r["event"] == "EXPIRY_7D")
-    assert json.loads(reminder["params"]) == {"first": "Aarav", "plan": "Monthly", "gym": "SmartGym", "end": "30 Sep 2026"}
+    assert json.loads(reminder["params"]) == {"first": "Aarav", "plan": "Monthly", "gym": "Xavion Fitness Studio", "end": "30 Sep 2026"}
     assert len(_whatsapp(outgoing)) == 2  # sent by the daily run itself, not a minute later
 
 

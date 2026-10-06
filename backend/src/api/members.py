@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
+from pydantic import Field
 
-from core.clock import add_months, iso_z
+from core.clock import add_months
 from core.errors import ValidationFailed
+from schemas.common import Model
 from schemas.requests import AppAccessIn, AssignTrainerIn, MemberCreate, MemberStatusIn, MemberUpdate
 from services.attendance_service import AttendanceService
 from services.context import Ctx
 from services.member_service import MemberService
 from services.membership_service import MembershipService
-from services.message_service import whatsapp_number
+from services.member_report_service import MemberReportService
 from services.payment_service import PaymentService
-from services.progress_service import ProgressService
 from services.workout_service import WorkoutService
 
 from .deps import Page, ensure_member_access, pagination
@@ -112,33 +114,23 @@ async def report(
     """Everything for a member's report in one call (the PDF is drawn in the browser). Payments
     only for admin / staff; up to a year of attendance and payments."""
     await ensure_member_access(ctx.db, ctx.user, member_id)
-    today = ctx.clock.today()
-    end = to or today
+    end = to or ctx.clock.today()
     start = from_ or (end - timedelta(days=89))
-    if start > end:
-        raise ValidationFailed("The start date is after the end date.", fields={"from": "Must be before the end date"})
-    if (end - start).days > 366:
-        raise ValidationFailed("Choose a period of at most one year.", fields={"from": "At most one year"})
-    member = await MemberService(ctx).workspace(member_id, include_finance=ctx.user.is_staff)
-    settings = await ctx.settings()
-    payments = None
-    if ctx.user.is_staff:
-        payments = (await PaymentService(ctx).list(Page(page=1, limit=500), start=start.isoformat(), end=end.isoformat(), status=None, method=None,
-                                                    member_id=member_id, q=None))["items"]
-    return ok({
-        "gym": {"name": settings["gym_name"], "address": settings["gym_address"], "phone": settings["gym_phone"],
-                "email": settings["gym_email"], "signatory": settings["receipt_signatory"] or settings["gym_name"]},
-        "generated_at": iso_z(ctx.now),
-        "from": start.isoformat(),
-        "to": end.isoformat(),
-        "member": member,
-        "member_whatsapp": whatsapp_number(member.get("phone") or "", ctx.config.default_country_code) or None,
-        "attendance": await AttendanceService(ctx).member_history(member_id, start, end),
-        "memberships": await MembershipService(ctx).for_member(member_id),
-        "payments": payments,
-        "progress": await ProgressService(ctx).for_member(member_id),
-        "workouts": await WorkoutService(ctx).for_member(member_id, include_archived=False),
-    })
+    return ok(await MemberReportService(ctx).build(member_id, start, end, include_payments=ctx.user.is_staff))
+
+
+class ReportLinkIn(Model):
+    from_: date = Field(alias="from")
+    to: date
+    sections: list[Literal["membership", "attendance", "payments", "progress", "workouts"]] = Field(min_length=1, max_length=5)
+
+
+@router.post("/{member_id}/report/link")
+async def report_link(member_id: int, body: ReportLinkIn, ctx: Ctx = Depends(team_ctx)) -> FastJSON:
+    """A signed link to the report PDF (30 days) to send on WhatsApp; opens without signing in."""
+    await ensure_member_access(ctx.db, ctx.user, member_id)
+    path = MemberReportService(ctx).link(member_id, body.from_, body.to, list(body.sections), allow_payments=ctx.user.is_staff)
+    return ok({"path": path})
 
 
 @router.get("/{member_id}/workouts")

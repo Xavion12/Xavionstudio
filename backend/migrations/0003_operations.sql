@@ -1,4 +1,4 @@
--- SmartGym · 0003 · Attendance, workouts, progress, expenses and in-app notifications
+-- Xavion Fitness · 0003 · Attendance, workouts, progress, expenses and in-app notifications
 
 -- One row per member per gym day (duplicate scans never add rows). Member details are
 -- never copied here — only member_id.

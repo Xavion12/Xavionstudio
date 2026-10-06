@@ -131,6 +131,6 @@ def password_problem(password: str) -> str | None:
         return "Use at most 128 characters."
     if password.isdigit() or password.isalpha():
         return "Mix letters with numbers or symbols."
-    if password.lower() in {"password1", "password123", "12345678a", "smartgym1", "welcome123", "admin@123"}:
+    if password.lower() in {"password1", "password123", "12345678a", "smartgym1", "xavion123", "xavion@123", "welcome123", "admin@123"}:
         return "This password is too common."
     return None

@@ -1,6 +1,6 @@
 """StorageService: database usage against the D1 Free limit, before it becomes a problem.
 
-SmartGym's own thresholds (not Cloudflare limits):
+Xavion Fitness's own thresholds (not Cloudflare limits):
 
     < 70 %   HEALTHY
     70–80 %  MONITOR

@@ -1,7 +1,7 @@
 """BackupService: downloadable backups, verified archiving, restore and D1 Time Travel.
 
     Create backup (choose data + period)  -> counts + watermarks recorded (status CREATED)
-    Browser downloads every page, builds SmartGym_Backup_<period>.zip and saves it
+    Browser downloads every page, builds Xavion_Fitness_Backup_<period>.zip and saves it
     Admin re-opens the saved file; the browser checks it -> Verify       (status VERIFIED)
     Admin ticks "I have downloaded and verified this backup" -> Archive  (status ARCHIVING)
     Eligible rows are removed in small chunks                             (status ARCHIVED)
@@ -41,8 +41,8 @@ RESTORE_BATCH = 500
 
 
 def _file_name(period_from: str, period_to: str, gym_name: str = "") -> str:
-    """e.g. Xavion_Fitness_Studio_Backup_2025.zip — named after the gym (SmartGym if unnamed)."""
-    prefix = "_".join(re.findall(r"[A-Za-z0-9]+", gym_name))[:60] or "SmartGym"
+    """e.g. Xavion_Fitness_Studio_Backup_2025.zip — named after the gym (Xavion Fitness if unnamed)."""
+    prefix = "_".join(re.findall(r"[A-Za-z0-9]+", gym_name))[:60] or "Xavion_Fitness"
     start, end = date.fromisoformat(period_from), date.fromisoformat(period_to)
     if start.month == 1 and start.day == 1 and end.month == 12 and end.day == 31:
         return f"{prefix}_Backup_{start.year}.zip" if start.year == end.year else f"{prefix}_Backup_{start.year}-{end.year}.zip"

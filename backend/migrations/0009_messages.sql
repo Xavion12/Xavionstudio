@@ -1,4 +1,4 @@
--- SmartGym · 0009 · Automatic WhatsApp and email messages
+-- Xavion Fitness · 0009 · Automatic WhatsApp and email messages
 -- Business events (a payment completed, an expiry reminder, an expired membership) queue a message
 -- in the same step that records them; a scheduled job sends queued messages a few at a time
 -- (the Free plan allows 50 outgoing requests per run) and records each result. Queued rows are

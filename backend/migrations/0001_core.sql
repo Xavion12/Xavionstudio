@@ -1,4 +1,4 @@
--- SmartGym · 0001 · Core tables
+-- Xavion Fitness · 0001 · Core tables
 -- D1 stores necessary business data only: IDs, short text, dates, times, numbers and
 -- statuses. No photos, images, files, PDFs, base64, BLOBs or large JSON — ever.
 -- Timestamps are UTC 'YYYY-MM-DD HH:MM:SS'; calendar dates are the gym's local 'YYYY-MM-DD'.

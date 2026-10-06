@@ -1,4 +1,4 @@
-"""End-to-end check of a deployed SmartGym (works on an empty gym, unlike smoke_test.py).
+"""End-to-end check of a deployed Xavion Fitness (works on an empty gym, unlike smoke_test.py).
 
     python scripts/live_check.py --base https://smartgym-api-test.example.workers.dev --login admin@gym.com
 
@@ -31,7 +31,7 @@ def call(base: str, method: str, path: str, token: str | None = None, body: dict
     request = urllib.request.Request(base + path, data=data, method=method)
     request.add_header("Content-Type", "application/json")
     # Cloudflare's browser check refuses the default Python-urllib agent (error 1010).
-    request.add_header("User-Agent", "SmartGym-live-check/1.0")
+    request.add_header("User-Agent", "XavionFitness-live-check/1.0")
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     for key, value in (headers or {}).items():
@@ -66,7 +66,7 @@ def main() -> None:
     base = args.base.rstrip("/")
     password = getpass.getpass(f"Admin password for {args.login}: ")
 
-    print(f"\nSmartGym live check against {base}")
+    print(f"\nXavion Fitness live check against {base}")
     status, health = call(base, "GET", "/api/health")
     expect("API is up", status == 200 and health.get("status") == "ok", health)
 

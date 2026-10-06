@@ -108,7 +108,7 @@ def test_backup_files_are_named_after_the_gym(client, admin):
 def test_upi_details_never_use_an_old_upi_id(client, admin, plans, upi_enabled, db):
     member = _no_login_member(client, admin)
     first = client.get(f"/api/payments/upi?member_id={member['id']}&plan_id={plans['Monthly']['id']}", headers=admin).json()
-    assert first["vpa"] == "smartgym@upi"
+    assert first["vpa"] == "xavionfitness@upi"
     # Changed by an admin on another Worker isolate while this one still caches the old settings.
     db.conn.execute("UPDATE settings SET value = 'xavion@okaxis' WHERE key = 'upi_id'")
     second = client.get(f"/api/payments/upi?member_id={member['id']}&plan_id={plans['Monthly']['id']}", headers=admin).json()

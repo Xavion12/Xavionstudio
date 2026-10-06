@@ -30,6 +30,7 @@ from api import (
     plans,
     portal,
     progress,
+    public,
     reports,
     settings,
     storage,
@@ -51,7 +52,7 @@ MAX_BODY_BYTES = 256 * 1024
 BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 DOC_PATHS = {"/api/docs", "/api/docs/oauth2-redirect", "/api/openapi.json"}
 ROUTERS = (auth, users, members, trainers, plans, memberships, payments, attendance, workouts, progress, notifications,
-           expenses, reports, dashboard, backups, storage, settings, portal, messages)
+           expenses, reports, dashboard, backups, storage, settings, portal, messages, public)
 
 ConfigProvider = Callable[[dict], AppConfig]
 DbProvider = Callable[[dict, AppConfig], Database]
@@ -271,7 +272,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
 def create_app(*, config_provider: ConfigProvider | None = None, db_provider: DbProvider | None = None) -> FastAPI:
     app = FastAPI(
-        title="SmartGym API",
+        title="Xavion Fitness API",
         version=API_VERSION,
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=None,

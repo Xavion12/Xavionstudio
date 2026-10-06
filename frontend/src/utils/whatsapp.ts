@@ -9,8 +9,14 @@ function shortDate(value: string | null | undefined): string {
   return `${String(d).padStart(2, '0')}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}-${y}`
 }
 
-/** The message staff send with a receipt (WhatsApp formatting: *bold*). */
-export function receiptMessage(receipt: Receipt): string {
+/** Full address of a share link (/r/..., /mr/...) on this site. */
+export function shareUrl(path: string | null | undefined): string | null {
+  return path ? `${window.location.origin}${path}` : null
+}
+
+/** The message staff send with a receipt (WhatsApp formatting: *bold*), with a link to the PDF. */
+export function receiptMessage(receipt: Receipt, pdfUrl: string | null = shareUrl(receipt.share_path)): string {
+  const pdf = pdfUrl ? ['', `📄 *Receipt (PDF):* ${pdfUrl}`] : []
   const first = receipt.member_name.split(' ')[0] || receipt.member_name
   const gym = receipt.gym.name
   const method = (METHOD_LABELS[receipt.payment_method] ?? receipt.payment_method).replace(' (manual)', '')
@@ -19,6 +25,7 @@ export function receiptMessage(receipt: Receipt): string {
       `Hi ${first},`,
       '',
       `A refund of *${formatMoney(receipt.refund.amount)}* for receipt ${receipt.receipt_number} has been recorded by ${gym}.`,
+      ...pdf,
       '',
       `- ${gym}`,
     ].join('\n')
@@ -35,7 +42,7 @@ export function receiptMessage(receipt: Receipt): string {
     lines.push(`*Valid:* ${shortDate(receipt.membership_start)} to ${shortDate(receipt.membership_end)}`)
   }
   if (receipt.discount > 0) lines.push(`*Discount:* ${formatMoney(receipt.discount)}`)
-  lines.push(`*Amount paid:* ${formatMoney(receipt.amount)} (${method})`, `*Date:* ${shortDate(receipt.payment_date)}`, '', 'See you at the gym!', `- ${gym}`)
+  lines.push(`*Amount paid:* ${formatMoney(receipt.amount)} (${method})`, `*Date:* ${shortDate(receipt.payment_date)}`, ...pdf, '', 'See you at the gym!', `- ${gym}`)
   return lines.join('\n')
 }
 
@@ -100,6 +107,7 @@ export function expiryMessage(e: { name: string; plan?: string | null; end?: str
   ].join('\n')
 }
 
-export function memberReportMessage(r: { name: string; gym: string; from: string; to: string; lines: string[] }): string {
-  return [`Hi ${firstName(r.name)},`, '', `Your report from *${r.gym}* (${r.from} to ${r.to}):`, '', ...r.lines, '', 'Keep it up!', `- ${r.gym}`].join('\n')
+export function memberReportMessage(r: { name: string; gym: string; from: string; to: string; lines: string[]; pdfUrl?: string | null }): string {
+  const pdf = r.pdfUrl ? ['', `📄 *Full report (PDF):* ${r.pdfUrl}`] : []
+  return [`Hi ${firstName(r.name)},`, '', `Your report from *${r.gym}* (${r.from} to ${r.to}):`, '', ...r.lines, ...pdf, '', 'Keep it up!', `- ${r.gym}`].join('\n')
 }

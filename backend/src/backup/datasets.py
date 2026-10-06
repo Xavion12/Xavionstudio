@@ -1,4 +1,4 @@
-"""What a SmartGym backup contains, and how each table is exported, archived and restored.
+"""What a Xavion Fitness backup contains, and how each table is exported, archived and restored.
 
 A backup is a ZIP the admin downloads (built in the browser from data this Worker streams):
 

@@ -27,8 +27,8 @@ DEFAULT_TERMS = "\n".join([
 ])
 
 DEFAULTS: dict[str, str] = {
-    "gym_name": "SmartGym",
-    "gym_address": "",
+    "gym_name": "Xavion Fitness Studio",
+    "gym_address": "1st Floor, TPG Enclaves Apartment, Thindal Medu, Thindal, Erode – 638012",
     "gym_phone": "",
     "gym_email": "",
     "currency": "INR",
@@ -139,7 +139,7 @@ def _validate(key: str, value: Any) -> str:
     if key == "member_code_prefix" and not re.fullmatch(r"[A-Z]{2,5}", text):
         raise ValidationFailed("Invalid member ID prefix.", fields={key: "Use 2–5 capital letters"})
     if key == "upi_id" and text and not is_valid_vpa(text):
-        raise ValidationFailed("Enter a valid UPI ID.", fields={key: "Enter a valid UPI ID such as smartgym@upi"})
+        raise ValidationFailed("Enter a valid UPI ID.", fields={key: "Enter a valid UPI ID such as xavionfitness@upi"})
     if key == "gst_number":
         text = text.upper()
         if text and not re.fullmatch(r"[0-9]{2}[A-Z0-9]{13}", text):

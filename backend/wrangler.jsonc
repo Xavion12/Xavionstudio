@@ -11,7 +11,7 @@
 	// Build the frontend first (cd frontend && npm run build, VITE_API_URL empty = same origin).
 	"routes": [
 		{
-			"pattern": "xavion.nexverrtech.com",
+			"pattern": "app.xavionfitness.in",
 			"custom_domain": true
 		}
 	],
@@ -28,16 +28,10 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "smartgym-db",
-			// Replace with the id printed by: npx wrangler d1 create smartgym-db
-			"database_id": "773a9877-a574-4dc7-8074-093f684a8cd9",
+			"database_name": "smartgym",
+			// The id printed by: npx wrangler d1 create smartgym  (see DEPLOY.md, step 3)
+			"database_id": "8b7fb068-42ea-4193-8c22-7e6844357d33",
 			"migrations_dir": "migrations"
-		},
-		{
-			"binding": "smartgym_db",
-			"database_name": "smartgym-db",
-			"database_id": "773a9877-a574-4dc7-8074-093f684a8cd9",
-			"remote": true
 		}
 	],
 	// Once a day at 00:30 UTC = 06:00 IST: membership statuses, expiry reminders (in-app, and
@@ -66,14 +60,14 @@
 	// CF_API_TOKEN, WHATSAPP_TOKEN and RESEND_API_KEY) are set with `npx wrangler secret put NAME` — never here.
 	"vars": {
 		"ENVIRONMENT": "production",
-		"ALLOWED_ORIGINS": "https://xavion.nexverrtech.com",
+		"ALLOWED_ORIGINS": "https://app.xavionfitness.in",
 		"GYM_TIMEZONE": "Asia/Kolkata",
 		"GYM_UTC_OFFSET_MINUTES": "330",
 		"DEFAULT_COUNTRY_CODE": "91",
 		// Cloudflare Free plan: 500 MB per D1 database, 7 days of Time Travel.
 		"D1_MAX_BYTES": "500000000",
 		"D1_TIME_TRAVEL_DAYS": "7",
-		"D1_DATABASE_NAME": "smartgym-db",
+		"D1_DATABASE_NAME": "smartgym",
 		// PBKDF2 rounds sized for the Free plan's 10 ms CPU budget (raise on Workers Paid).
 		"PASSWORD_ITERATIONS": "20000"
 		// Automatic WhatsApp / email (README -> Automatic WhatsApp and email): no settings screen - each

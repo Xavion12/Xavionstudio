@@ -6,7 +6,7 @@
         -> member pays the gym's UPI ID -> submits the UTR -> PENDING
         -> staff verify the UTR against the bank statement -> PAID -> membership activated
            (or REJECTED / FAILED -> no membership)
-    Refunds are only RECORDED here; the money is returned outside SmartGym.
+    Refunds are only RECORDED here; the money is returned outside Xavion Fitness.
 
 A membership row is created only once a payment is PAID, with dates computed by the backend,
 in the same D1 batch (one transaction) as the payment change. Entering a UTR never activates
@@ -25,6 +25,7 @@ from repositories.members import MemberRepository
 from repositories.memberships import MembershipRepository
 from repositories.payments import PaymentRepository
 from repositories.plans import PlanRepository
+from security import links
 from utils.formatting import format_date, format_inr, member_code_candidates, receipt_number
 from utils.upi import build_upi_uri, normalize_reference, normalize_utr
 
@@ -409,6 +410,8 @@ class PaymentService:
                     "email": settings["gym_email"], "gst_number": settings["gst_number"], "sac_code": settings["sac_code"],
                     "signatory": settings["receipt_signatory"] or settings["gym_name"]},
             "receipt_number": receipt_number(row["payment_number"]),
+            # Signed link to this receipt's PDF (opens without signing in), for WhatsApp messages.
+            "share_path": "/r/" + links.sign("receipt", str(row["id"]), self.ctx.config.jwt_secret),
             "payment_number": row["payment_number"],
             "member_code": row["member_code"],
             "member_name": row["member_name"],

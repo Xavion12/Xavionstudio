@@ -11,7 +11,7 @@ import { membersApi } from '@/services/endpoints'
 import type { MemberReport, MemberReportSection, MemberWorkspace } from '@/types'
 import { saveBlob } from '@/utils/download'
 import { formatDate, todayISO } from '@/utils/format'
-import { memberReportMessage, whatsAppLink } from '@/utils/whatsapp'
+import { memberReportMessage, shareUrl, whatsAppLink } from '@/utils/whatsapp'
 
 type Preset = 'month' | '3m' | '12m' | 'custom'
 
@@ -95,12 +95,14 @@ export function MemberReportDialog({ member, staff, open, onClose }: { member: M
         if (report) toast.error('No phone number', { description: 'Add the member’s mobile number to send on WhatsApp.' })
         return
       }
+      const { path } = await membersApi.reportLink(member.id, range.from, range.to, sections)
       const text = memberReportMessage({
         name: member.name,
         gym: report.gym.name,
         from: formatDate(report.from, { withYear: true }),
         to: formatDate(report.to, { withYear: true }),
         lines: memberReportSummary(report, sections),
+        pdfUrl: shareUrl(path),
       })
       const link = whatsAppLink(report.member_whatsapp, text)
       if (win) win.location.href = link
@@ -166,7 +168,7 @@ export function MemberReportDialog({ member, staff, open, onClose }: { member: M
           ))}
         </fieldset>
         <p className="text-[13px] text-muted">
-          The PDF carries the gym logo, the digital signature and the VERIFIED stamp. <strong className="font-semibold text-ink">Send on WhatsApp</strong> opens the member’s chat with a summary typed in; on a phone, <strong className="font-semibold text-ink">Share PDF</strong> sends the PDF itself.
+          The PDF carries the gym logo, the digital signature and the VERIFIED stamp. <strong className="font-semibold text-ink">Send on WhatsApp</strong> opens the member’s chat with a summary and a link to this PDF (valid 30 days); on a phone, <strong className="font-semibold text-ink">Share PDF</strong> sends the PDF itself.
         </p>
       </div>
     </Dialog>

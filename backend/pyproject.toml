@@ -1,7 +1,7 @@
 [project]
 name = "smartgym-api"
 version = "1.0.0"
-description = "SmartGym API — FastAPI on Cloudflare Python Workers with D1"
+description = "Xavion Fitness API — FastAPI on Cloudflare Python Workers with D1"
 requires-python = ">=3.13,<3.14"
 # Runtime dependencies are vendored into the Worker by pywrangler. Keep this list tiny:
 # FastAPI brings Starlette + Pydantic; everything else (JWT, PBKDF2, PDF, CSV) is stdlib.

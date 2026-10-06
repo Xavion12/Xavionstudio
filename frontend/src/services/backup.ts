@@ -12,7 +12,7 @@ const PLANS = 'workout_plans'
 const EXERCISES = 'workout_exercises'
 
 export interface BackupMetadata {
-  app: 'SmartGym'
+  app: 'Xavion Fitness' | 'SmartGym'
   format: number
   backup_id: number
   file_name: string
@@ -114,10 +114,10 @@ export async function buildBackup(
 
   const counts = Object.fromEntries(tables.map((t) => [t.table, data.get(t.table)?.length ?? 0]))
   const metadata: BackupMetadata = {
-    app: 'SmartGym',
+    app: 'Xavion Fitness',
     format: FORMAT,
     backup_id: backup.id,
-    file_name: backup.file_name ?? `SmartGym_Backup_${backup.id}.zip`,
+    file_name: backup.file_name ?? `Xavion_Fitness_Backup_${backup.id}.zip`,
     gym_name: options.gymName,
     created_at: backup.created_at,
     created_by: backup.created_by_name,
@@ -154,9 +154,9 @@ export interface ParsedBackup {
 
 export class BackupFileError extends Error {}
 
-/** Open a SmartGym backup ZIP, check every file against metadata.json, and read the rows. */
+/** Open a Xavion Fitness backup ZIP, check every file against metadata.json, and read the rows. */
 export async function readBackup(file: File): Promise<ParsedBackup> {
-  if (!/\.zip$/i.test(file.name)) throw new BackupFileError('Choose the SmartGym backup file (.zip).')
+  if (!/\.zip$/i.test(file.name)) throw new BackupFileError('Choose the Xavion Fitness backup file (.zip).')
   const buffer = await file.arrayBuffer()
   let entries: Map<string, Uint8Array>
   try {
@@ -165,17 +165,18 @@ export async function readBackup(file: File): Promise<ParsedBackup> {
     throw new BackupFileError((error as Error).message)
   }
   const metaBytes = entries.get(METADATA_FILE)
-  if (!metaBytes) throw new BackupFileError("This ZIP isn't a SmartGym backup (metadata.json is missing).")
+  if (!metaBytes) throw new BackupFileError("This ZIP isn't a Xavion Fitness backup (metadata.json is missing).")
   let metadata: BackupMetadata
   try {
     metadata = JSON.parse(new TextDecoder().decode(metaBytes)) as BackupMetadata
   } catch {
     throw new BackupFileError('metadata.json is damaged.')
   }
-  if (metadata.app !== 'SmartGym' || !Array.isArray(metadata.tables) || !Array.isArray(metadata.files)) {
-    throw new BackupFileError("This ZIP isn't a SmartGym backup.")
+  // Backups made before the rename say 'SmartGym': both are this app's backups.
+  if ((metadata.app !== 'Xavion Fitness' && metadata.app !== 'SmartGym') || !Array.isArray(metadata.tables) || !Array.isArray(metadata.files)) {
+    throw new BackupFileError("This ZIP isn't a Xavion Fitness backup.")
   }
-  if (metadata.format > FORMAT) throw new BackupFileError('This backup was made by a newer version of SmartGym.')
+  if (metadata.format > FORMAT) throw new BackupFileError('This backup was made by a newer version of the app.')
 
   const decoder = new TextDecoder()
   const texts = new Map<string, string>()

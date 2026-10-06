@@ -1,4 +1,4 @@
--- SmartGym · 0004 · Backup, archive and storage monitoring
+-- Xavion Fitness · 0004 · Backup, archive and storage monitoring
 -- Backup files themselves are never stored in D1: the admin downloads them. These tables
 -- only hold the small audit trail and daily storage figures.
 

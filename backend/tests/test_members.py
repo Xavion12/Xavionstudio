@@ -89,7 +89,7 @@ def test_member_report_has_everything_for_the_period(client, admin, plans):
     assert (report["from"], report["to"]) == ("2026-09-01", "2026-09-30")
     assert report["attendance"]["days"] == 1 and len(report["payments"]) == 1 and len(report["memberships"]) == 1
     assert {"history", "latest"} <= set(report["progress"]) and isinstance(report["workouts"], list)
-    assert report["gym"]["signatory"] == "SmartGym"
+    assert report["gym"]["signatory"] == "Xavion Fitness Studio"
 
 
 def test_member_report_limits(client, admin, staff):

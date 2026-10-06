@@ -1,4 +1,4 @@
--- SmartGym · 0008 · Dashboard chart cache
+-- Xavion Fitness · 0008 · Dashboard chart cache
 -- The dashboard charts cover months and days that are already over. Those totals are computed at
 -- most once a day and kept here as one small JSON row; only today and the current month are read
 -- live. With thousands of members this keeps a dashboard visit cheap in D1 rows read.

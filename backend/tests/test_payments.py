@@ -158,7 +158,7 @@ def test_receipt_shows_discount_gst_and_terms_like_a_tax_invoice(client, admin, 
     assert (receipt["price"], receipt["discount"], receipt["amount"]) == (1_300_000, 200_000, 1_100_000)
     assert receipt["tax"] == {"rate": 5, "taxable": 1_047_619, "amount": 52_381}  # Rs 10,476.19 + Rs 523.81
     assert receipt["gym"]["gst_number"] == "33CDAPA3408D2ZH" and receipt["gym"]["sac_code"] == "999723"
-    assert receipt["gym"]["signatory"] == "SmartGym"  # no name set: the gym signs
+    assert receipt["gym"]["signatory"] == "Xavion Fitness Studio"  # no name set: the gym signs
     client.put("/api/settings", json={"receipt_signatory": "Riyaz"}, headers=admin)
     assert client.get(f"/api/payments/{paid['id']}/receipt", headers=admin).json()["gym"]["signatory"] == "Riyaz"
     assert receipt["member_phone"] == "9790685454"

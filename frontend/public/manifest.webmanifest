@@ -1,7 +1,7 @@
 {
-  "name": "Gym member app",
-  "short_name": "Gym",
-  "description": "Gym management and member app: memberships, UPI payments, QR attendance, workouts and progress.",
+  "name": "Xavion Fitness Studio",
+  "short_name": "Xavion",
+  "description": "Xavion Fitness Studio: memberships, UPI payments, QR attendance, workouts and progress.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

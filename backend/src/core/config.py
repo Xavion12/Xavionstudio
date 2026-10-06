@@ -66,7 +66,7 @@ class AppConfig:
     # Cloudflare D1 Free plan: 500 MB per database, 7 days of Time Travel.
     d1_max_bytes: int = 500_000_000
     d1_time_travel_days: int = 7
-    d1_database_name: str = "smartgym-db"
+    d1_database_name: str = "smartgym"
     # Optional: lets an admin run a D1 Time Travel restore from Data & Backup.
     cf_account_id: str = ""
     cf_api_token: str = ""

@@ -1,4 +1,4 @@
--- SmartGym · 0005 · Indexes
+-- Xavion Fitness · 0005 · Indexes
 -- Indexes cost storage and extra D1 row writes, so each one backs a specific screen or job.
 -- UNIQUE columns (members.member_code, members.user_id, members.qr_token, trainers.user_id,
 -- payments.payment_number, refunds.payment_id, membership_plans.name) are already indexed.

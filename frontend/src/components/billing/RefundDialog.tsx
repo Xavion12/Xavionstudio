@@ -13,7 +13,7 @@ import type { Payment } from '@/types'
 import { applyServerErrors } from '@/utils/forms'
 import { formatDate, formatMoney, METHOD_LABELS, paiseToRupees, rupeesToPaise, todayISO } from '@/utils/format'
 
-/** Record a refund the gym has already paid back (SmartGym never moves money). Admin only. */
+/** Record a refund the gym has already paid back (Xavion Fitness never moves money). Admin only. */
 export function RefundDialog({ payment, onClose, onDone }: { payment: Payment | null; onClose: () => void; onDone?: (payment: Payment) => void }) {
   const receipt = useReceipt()
   const toast = useToast()

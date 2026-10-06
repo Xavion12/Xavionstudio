@@ -1,8 +1,8 @@
-"""End-to-end smoke + latency check against a running SmartGym API.
+"""End-to-end smoke + latency check against a running Xavion Fitness API.
 
     python scripts/smoke_test.py --base http://127.0.0.1:8787            # local (pywrangler dev)
-    python scripts/smoke_test.py --base https://api.gymname.com --read-only \
-        --login admin@gymname.com --password '...'
+    python scripts/smoke_test.py --base https://app.xavionfitness.in --read-only \
+        --login admin@xavionfitness.in --password '...'
 
 Walks the main workflows (sign-in, dashboard, search, member workspace, desk payment, UPI
 verification, QR attendance, reports, member app, Data & Backup) and prints each call's
@@ -30,7 +30,7 @@ def call(base: str, method: str, path: str, token: str | None = None, body: dict
     request = urllib.request.Request(base + path, data=data, method=method)
     request.add_header("Accept", "application/json")
     # Cloudflare's browser check refuses the default Python-urllib agent (error 1010).
-    request.add_header("User-Agent", "SmartGym-smoke-test/1.0")
+    request.add_header("User-Agent", "XavionFitness-smoke-test/1.0")
     if data is not None:
         request.add_header("Content-Type", "application/json")
     if token:
@@ -64,14 +64,14 @@ expect.failures = 0  # type: ignore[attr-defined]
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="http://127.0.0.1:8787")
-    parser.add_argument("--login", default="admin@smartgym.local")
+    parser.add_argument("--login", default="admin@xavionfitness.local")
     parser.add_argument("--password", default="Admin@123")
     parser.add_argument("--read-only", action="store_true")
     parser.add_argument("--repeat", type=int, default=3, help="repeat read endpoints to average latency")
     args = parser.parse_args()
     base = args.base.rstrip("/")
 
-    print(f"SmartGym smoke test against {base}")
+    print(f"Xavion Fitness smoke test against {base}")
     status, health = call(base, "GET", "/api/health")
     expect("health", status == 200, health)
     status, login = call(base, "POST", "/api/auth/login", body={"identifier": args.login, "password": args.password})

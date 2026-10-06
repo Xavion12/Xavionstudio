@@ -1,4 +1,4 @@
-"""Run the SmartGym API locally on CPython + SQLite — no Wrangler needed.
+"""Run the Xavion Fitness API locally on CPython + SQLite — no Wrangler needed.
 
     python scripts/dev_server.py            # migrate .local/smartgym.sqlite3 and serve on :8787
     python scripts/dev_server.py --seed     # also load DEVELOPMENT demo data (fresh database)
@@ -77,7 +77,7 @@ def main() -> None:
     env.setdefault("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173")
     config = load_config(env)
     app = create_app(config_provider=lambda scope: config, db_provider=lambda scope, cfg: db)
-    print(f"SmartGym API (local SQLite) on http://{args.host}:{args.port}/api  ·  docs: /api/docs")
+    print(f"Xavion Fitness API (local SQLite) on http://{args.host}:{args.port}/api  ·  docs: /api/docs")
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 

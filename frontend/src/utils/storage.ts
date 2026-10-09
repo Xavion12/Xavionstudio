@@ -32,7 +32,8 @@ export function writeJSON(key: string, value: unknown): void {
 }
 
 export const KEYS = {
-  token: 'smartgym.token',
+  /** Pre-cookie sessions stored the token here; only ever deleted now. */
+  legacyToken: 'smartgym.token',
   user: 'smartgym.user',
   theme: 'smartgym.theme',
   config: 'smartgym.config',

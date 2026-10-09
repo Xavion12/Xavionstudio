@@ -1,9 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { clearApiCache } from '@/hooks/useApi'
-import { onPasswordChangeRequired, onUnauthorized, setAuthToken } from '@/services/api'
+import { onPasswordChangeRequired, onUnauthorized } from '@/services/api'
 import { authApi } from '@/services/endpoints'
 import type { AuthResponse, Role, User } from '@/types'
-import { KEYS, readJSON, readStorage, writeJSON, writeStorage } from '@/utils/storage'
+import { KEYS, readJSON, writeJSON, writeStorage } from '@/utils/storage'
+
+// Sessions from before the cookie change kept the token in localStorage: remove it for good.
+writeStorage(KEYS.legacyToken, null)
 
 interface AuthValue {
   user: User | null
@@ -27,20 +30,15 @@ export function homePathFor(user: User | null): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const token = readStorage(KEYS.token)
-    if (!token) return null
-    setAuthToken(token)
-    return readJSON<User>(KEYS.user)
-  })
-  const [verified, setVerified] = useState(() => !readStorage(KEYS.token))
+  // The session itself is an HttpOnly cookie; the cached user only lets the UI render at once
+  // and is confirmed with /auth/me below.
+  const [user, setUser] = useState<User | null>(() => readJSON<User>(KEYS.user))
+  const [verified, setVerified] = useState(() => !readJSON<User>(KEYS.user))
   const [sessionExpired, setSessionExpired] = useState(false)
 
   const clearSession = useCallback((expired: boolean) => {
-    writeStorage(KEYS.token, null)
     writeStorage(KEYS.user, null)
     writeStorage(KEYS.memberQr, null)
-    setAuthToken(null)
     clearApiCache()
     setUser(null)
     setSessionExpired(expired)
@@ -48,9 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const applySession = useCallback((auth: AuthResponse) => {
-    writeStorage(KEYS.token, auth.token)
     writeJSON(KEYS.user, auth.user)
-    setAuthToken(auth.token)
     clearApiCache()
     setSessionExpired(false)
     setUser(auth.user)
@@ -71,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Revalidate a stored session in the background; the UI renders immediately from cache.
   useEffect(() => {
-    if (!readStorage(KEYS.token)) return
+    if (!readJSON<User>(KEYS.user)) return
     authApi
       .me()
       .then((fresh) => {
@@ -91,7 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   )
 
-  const logout = useCallback(() => clearSession(false), [clearSession])
+  const logout = useCallback(() => {
+    clearSession(false)
+    authApi.logout().catch(() => undefined) // clears the cookie; offline, it simply expires
+  }, [clearSession])
   const hasRole = useCallback((...roles: Role[]) => !!user && roles.includes(user.role), [user])
 
   const value = useMemo(

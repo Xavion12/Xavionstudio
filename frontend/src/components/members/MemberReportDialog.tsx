@@ -87,6 +87,7 @@ export function MemberReportDialog({ member, staff, open, onClose }: { member: M
 
   const whatsapp = async () => {
     const win = window.open('', '_blank') // during the click: browsers block pop-ups opened after a wait
+    if (win) win.opener = null // the opened tab can't reach back into this one
     setBusy('whatsapp')
     try {
       const report = await load()

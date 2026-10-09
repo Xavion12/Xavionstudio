@@ -56,7 +56,8 @@ class ReportService:
             summary = {"plans": (await self.repo.membership_by_plan(low, high, today.isoformat())).rows}
             fetch = self.repo.membership_rows
         elif kind == "payments":
-            methods, refunds, statuses = await self.repo.payment_by_method(low, high)
+            rate = int((await self.ctx.settings())["gst_rate"] or 0)
+            methods, refunds, statuses, taxed = await self.repo.payment_by_method(low, high, rate)
             by_method = {r["method"]: r for r in methods.rows}
             collected = sum(r["amount"] for r in methods.rows)
             refunded = (refunds.first or {}).get("amount", 0)
@@ -69,6 +70,10 @@ class ReportService:
                 "refunds": refunded,
                 "refund_count": (refunds.first or {}).get("count", 0),
                 "total_revenue": collected - refunded,
+                # GST included in the money collected (before refunds), CGST + SGST together.
+                "taxable": int((taxed.first or {}).get("taxable") or 0),
+                "gst": collected - int((taxed.first or {}).get("taxable") or 0),
+                "gst_rate": rate,
                 "statuses": statuses.rows,
             }
             fetch = self.repo.payment_rows

@@ -14,7 +14,7 @@ from .base import Binder, Repository, Statement, count_of, where
 PAYMENT_COLUMNS = (
     "p.id, p.payment_number, p.member_id, p.membership_id, p.plan_id, p.amount, p.payment_method, "
     "p.transaction_reference, p.status, p.payment_date, p.verified_by, p.verified_at, p.notes, p.created_by, "
-    "p.created_at, p.updated_at, p.list_price"
+    "p.created_at, p.updated_at, p.list_price, p.gst_rate"
 )
 _RETURNING = PAYMENT_COLUMNS.replace("p.", "")
 DETAIL_COLUMNS = (
@@ -49,8 +49,9 @@ class PaymentRepository(Repository):
         return (
             "INSERT INTO payments (payment_number, member_id, membership_id, plan_id, amount, payment_method, "
             "transaction_reference, status, payment_date, verified_by, verified_at, notes, idempotency_key, created_by, "
-            f"created_at, updated_at, list_price) VALUES ({_number_sql('?1')}, ?2, {membership}, ?3, ?4, ?5, ?6, ?7, ?8, ?9, "
-            f"{verified_at}, ?10, ?11, ?13, ?12, ?12, (SELECT price FROM membership_plans WHERE id = ?3)) RETURNING {_RETURNING}",
+            f"created_at, updated_at, list_price, gst_rate) VALUES ({_number_sql('?1')}, ?2, {membership}, ?3, ?4, ?5, ?6, ?7, ?8, ?9, "
+            f"{verified_at}, ?10, ?11, ?13, ?12, ?12, (SELECT price FROM membership_plans WHERE id = ?3), "
+            f"(SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'gst_rate')) RETURNING {_RETURNING}",
             [year, member_id, plan_id, amount, method, reference, status, payment_date, verified_by, notes,
              idempotency_key, now, created_by],
         )

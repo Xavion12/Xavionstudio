@@ -37,10 +37,10 @@ DEFAULTS: dict[str, str] = {
     "upi_enabled": "1",
     "upi_id": "",
     "upi_name": "",
-    # Receipts: GST details (rate 0 = no tax lines; the rate is included in the price) and terms.
+    # Receipts: GST details (included in every price; default 5% = CGST 2.5% + SGST 2.5%; 0 = no tax lines) and terms.
     "gst_number": "",
     "sac_code": "999723",
-    "gst_rate": "0",
+    "gst_rate": "5",
     "receipt_terms": DEFAULT_TERMS,
     # Name shown as the digital signature on receipts (e.g. the owner); empty = the gym's name.
     "receipt_signatory": "",

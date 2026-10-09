@@ -236,8 +236,11 @@ class MessageService:
         """The receipt for a completed payment (new membership or renewal), in the batch that records it."""
         if not membership:
             return []
+        rate = payment.get("gst_rate")
+        rate = int((await self.ctx.settings())["gst_rate"] or 0) if rate is None else rate
+        amount = format_inr(payment["amount"]) + (f" (incl. {rate}% GST)" if rate else "")
         return await self.event_statements(member["id"], "PAYMENT_RECEIVED", {
-            "amount": format_inr(payment["amount"]), "plan": membership.get("plan_name") or "",
+            "amount": amount, "plan": membership.get("plan_name") or "",
             "start": format_date(membership["start_date"]), "end": format_date(membership["end_date"]),
             "number": payment["payment_number"],
         }, str(payment["id"]))

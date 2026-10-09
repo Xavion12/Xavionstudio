@@ -1,4 +1,5 @@
-"""Per-IP sign-in throttle using the optional Workers Rate Limiting binding (LOGIN_LIMITER).
+"""Per-IP throttles using the optional Workers Rate Limiting bindings: LOGIN_LIMITER (sign-in and
+first-time setup) and PUBLIC_LIMITER (the share links anyone can open).
 
 Account lockout after repeated wrong passwords is enforced in D1 regardless; this binding
 only adds a cheap, in-memory first line of defence against password spraying.
@@ -14,7 +15,12 @@ from core.errors import TooManyRequests
 
 
 async def check_login_rate(env: Any, key: str) -> None:
-    limiter = getattr(env, "LOGIN_LIMITER", None) if env is not None else None
+    await check_rate(env, "LOGIN_LIMITER", key)
+
+
+async def check_rate(env: Any, binding: str, key: str,
+                     message: str = "Too many sign-in attempts. Please wait a minute and try again.") -> None:
+    limiter = getattr(env, binding, None) if env is not None else None
     if limiter is None:
         return
     try:
@@ -25,4 +31,4 @@ async def check_login_rate(env: Any, key: str) -> None:
     except Exception:  # never block sign-in because the limiter itself failed
         return
     if not allowed:
-        raise TooManyRequests("Too many sign-in attempts. Please wait a minute and try again.")
+        raise TooManyRequests(message)

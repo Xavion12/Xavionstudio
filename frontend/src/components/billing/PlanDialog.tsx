@@ -11,6 +11,8 @@ import { planSchema, type PlanValues } from '@/schemas/billing'
 import type { Plan } from '@/types'
 import { applyServerErrors } from '@/utils/forms'
 import { formatMoney, paiseToRupees, planDurationLabel, rupeesToPaise } from '@/utils/format'
+import { gstSplit } from '@/utils/gst'
+import { useConfig } from '@/contexts/ConfigContext'
 
 const PRESETS = [
   { label: 'Monthly', days: 30 },
@@ -48,6 +50,7 @@ export function PlanDialog({ open, onClose, plan }: { open: boolean; onClose: ()
 
   const days = Number(values.duration_days)
   const price = rupeesToPaise(values.price ?? '')
+  const gst = gstSplit(price, useConfig().gst_rate)
   return (
     <Dialog
       open={open}
@@ -98,7 +101,7 @@ export function PlanDialog({ open, onClose, plan }: { open: boolean; onClose: ()
           required
           inputMode="decimal"
           leading="₹"
-          hint={days > 0 && price > 0 ? `≈ ${formatMoney(Math.round((price / days) * 30))} per month` : undefined}
+          hint={days > 0 && price > 0 ? [`≈ ${formatMoney(Math.round((price / days) * 30))} per month`, gst && `incl. ${gst.rate}% GST ${formatMoney(gst.amount)} (taxable ${formatMoney(gst.taxable)})`].filter(Boolean).join(' · ') : undefined}
           error={formState.errors.price?.message}
           {...register('price')}
         />

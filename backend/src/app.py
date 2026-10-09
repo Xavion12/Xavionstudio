@@ -62,6 +62,7 @@ SECURITY_HEADERS = [
     (b"referrer-policy", b"no-referrer"),
     (b"x-frame-options", b"DENY"),
     (b"cross-origin-resource-policy", b"same-site"),
+    (b"x-robots-tag", b"noindex, nofollow"),
 ]
 API_CSP = (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")
 
@@ -117,6 +118,7 @@ class EdgeMiddleware:
             cors = [
                 (b"access-control-allow-origin", origin.encode("latin-1")),
                 (b"vary", b"Origin"),
+                (b"access-control-allow-credentials", b"true"),
                 (b"access-control-expose-headers", b"Content-Disposition, Server-Timing"),
             ]
         method = scope["method"]

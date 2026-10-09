@@ -190,9 +190,17 @@ export function reportSummary(report: ReportData): { stats: SummaryItem[]; break
           { label: 'Collected', value: m('collected') },
           { label: 'Refunded', value: `${m('refunds')} (${n('refund_count')})` },
           { label: 'Net revenue', value: m('total_revenue') },
+          ...(Number(s.gst ?? 0) > 0 ? [{ label: `GST included (${n('gst_rate')}%)`, value: m('gst') }] : []),
           { label: 'Payments', value: formatNumber(statuses.reduce((t, x) => t + x.count, 0)) },
         ],
         breakdown: [
+          ...(Number(s.gst ?? 0) > 0
+            ? [
+                { label: 'Taxable value', value: m('taxable') },
+                { label: `CGST ${percent(Number(s.gst_rate) / 2)}`, value: formatMoney(Number(s.gst) - Math.floor(Number(s.gst) / 2)) },
+                { label: `SGST ${percent(Number(s.gst_rate) / 2)}`, value: formatMoney(Math.floor(Number(s.gst) / 2)) },
+              ]
+            : []),
           ...methods.map((x) => ({ label: METHOD_LABELS[x.method] ?? x.method, value: `${formatNumber(x.count)} · ${formatMoney(x.amount)}` })),
           ...statuses.map((x) => ({ label: `Status ${x.status}`, value: `${formatNumber(x.count)} · ${formatMoney(x.amount)}` })),
         ],
@@ -553,10 +561,13 @@ export async function receiptPdf(receipt: Receipt): Promise<Blob> {
   const money: [string, string, boolean?][] = []
   if (receipt.discount > 0) money.push(['DISCOUNT', formatMoney(receipt.discount)])
   if (receipt.tax) {
-    const half = receipt.tax.rate / 2
+    // Prices include GST: taxable value + CGST + SGST = the amount paid.
+    const half = percent(receipt.tax.rate / 2)
+    const cgst = receipt.tax.cgst ?? receipt.tax.amount - Math.floor(receipt.tax.amount / 2)
     money.push(['TAXABLE AMOUNT', formatMoney(receipt.tax.taxable)])
-    money.push(['CGST(%) + SGST(%)', `${percent(half)} + ${percent(half)}`])
-    money.push(['TAX AMOUNT', formatMoney(receipt.tax.amount)])
+    money.push([`CGST @ ${half}`, formatMoney(cgst)])
+    money.push([`SGST @ ${half}`, formatMoney(receipt.tax.amount - cgst)])
+    money.push([`TOTAL GST (${percent(receipt.tax.rate)})`, formatMoney(receipt.tax.amount)])
   }
   money.push(['PAID AMOUNT', formatMoney(receipt.amount), true])
   for (const [label, value, strong] of money) {

@@ -14,6 +14,7 @@ import { invalidate, useApi } from '@/hooks/useApi'
 import { useDocumentTitle } from '@/hooks/useUtilities'
 import { isApiError } from '@/services/api'
 import { portalApi } from '@/services/endpoints'
+import { GstBreakdown, GstNote } from '@/components/billing/GstBreakdown'
 import { utrSchema, type UtrValues } from '@/schemas/billing'
 import type { Plan, UpiDetails } from '@/types'
 import { cn } from '@/utils/cn'
@@ -235,6 +236,7 @@ export default function PortalRenewPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-ink">{formatMoney(p.price)}</p>
+                      <GstNote amount={p.price} />
                       <span
                         className={cn(
                           'ml-auto mt-1 flex size-6 items-center justify-center rounded-full border-2',
@@ -274,6 +276,7 @@ export default function PortalRenewPage() {
           <Card className="p-5 text-center">
             <p className="text-sm font-medium text-muted">Pay exactly</p>
             <p className="text-4xl font-bold tracking-tight text-ink">{formatMoney(upi.amount)}</p>
+            <GstBreakdown amount={upi.amount} className="mx-auto mt-3 max-w-xs text-left" />
             <div className="mx-auto mt-4 w-fit rounded-3xl border border-line bg-white p-3">
               <QRCode value={upi.uri} size={216} label={`UPI QR code to pay ${formatMoney(upi.amount)} to ${upi.payee_name}`} />
             </div>
@@ -284,12 +287,15 @@ export default function PortalRenewPage() {
               <code className="text-sm font-semibold text-ink">{upi.vpa}</code>
               <CopyButton value={upi.vpa} />
             </div>
+            {/* Only a real upi:// payment link, never any other kind of URL. */}
+            {upi.uri.startsWith('upi://') && (
             <a
               href={upi.uri}
               className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[15px] font-bold text-on-primary shadow-card transition-colors hover:bg-primary-hover sm:hidden"
             >
               <ExternalLink className="size-4" aria-hidden /> Open UPI app
             </a>
+            )}
             <p className="mt-3 text-[12px] text-muted">Scan with any UPI app, or tap “Open UPI app” on this phone. Note: {upi.note}</p>
           </Card>
           <Card className="p-5">

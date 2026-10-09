@@ -61,11 +61,11 @@ def test_a_payment_sends_the_receipt_by_whatsapp_and_email_at_once(connected, ad
     assert [(r["channel"], r["event"], r["recipient"], r["status"]) for r in rows] == [
         ("WHATSAPP", "PAYMENT_RECEIVED", "919876543210", "SENT"), ("EMAIL", "PAYMENT_RECEIVED", "aarav@example.com", "SENT"),
     ]
-    assert json.loads(rows[0]["params"]) == {"first": "Aarav", "gym": "Xavion Fitness Studio", "amount": "₹1,500", "plan": "Monthly",
+    assert json.loads(rows[0]["params"]) == {"first": "Aarav", "gym": "Xavion Fitness Studio", "amount": "₹1,500 (incl. 5% GST)", "plan": "Monthly",
                                              "start": "23 Sep 2026", "end": "22 Oct 2026", "number": payment["payment_number"]}
     [whatsapp] = _whatsapp(outgoing)
     assert whatsapp["to"] == "919876543210" and whatsapp["template"]["name"] == "payment_received"
-    assert _values(whatsapp) == ["Aarav", "₹1,500", "Xavion Fitness Studio", "Monthly", "23 Sep 2026", "22 Oct 2026", payment["payment_number"]]
+    assert _values(whatsapp) == ["Aarav", "₹1,500 (incl. 5% GST)", "Xavion Fitness Studio", "Monthly", "23 Sep 2026", "22 Oct 2026", payment["payment_number"]]
     [email] = _emails(outgoing)
     assert email["to"] == ["aarav@example.com"] and email["subject"] == "Payment received - Xavion Fitness Studio"
     assert "Monthly membership runs from 23 Sep 2026 to 22 Oct 2026" in email["text"]

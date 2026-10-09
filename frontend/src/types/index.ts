@@ -52,6 +52,8 @@ export interface PublicConfig {
   member_code_prefix: string
   /** Phone country code for WhatsApp links, e.g. "91". */
   country_code?: string
+  /** GST % included in plan prices (0 = none). */
+  gst_rate?: number
 }
 
 export interface CoverageInfo {
@@ -212,7 +214,7 @@ export interface Receipt {
   price: number
   discount: number
   /** GST included in the amount; null when the gym charges no GST. */
-  tax: { rate: number; taxable: number; amount: number } | null
+  tax: { rate: number; taxable: number; amount: number; cgst: number; sgst: number } | null
   terms: string[]
   amount: number
   payment_method: PaymentMethod

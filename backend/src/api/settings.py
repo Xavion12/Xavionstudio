@@ -68,6 +68,8 @@ async def public_config(ctx: Ctx = Depends(public_ctx)) -> FastJSON:
             "timezone": ctx.config.gym_timezone,
             # For WhatsApp links (wa.me/<country code><number>) built in the browser.
             "country_code": ctx.config.default_country_code,
+            # GST included in plan prices, shown as a breakdown when billing.
+            "gst_rate": int(settings["gst_rate"] or 0),
         }
     )
 

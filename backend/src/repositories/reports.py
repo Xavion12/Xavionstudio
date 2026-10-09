@@ -60,7 +60,7 @@ class ReportRepository(Repository):
         )
 
     # -- payments ----------------------------------------------------------------------------------
-    async def payment_by_method(self, start: str, end: str) -> list[Result]:
+    async def payment_by_method(self, start: str, end: str, gst_rate: int = 0) -> list[Result]:
         return await self.db.batch(
             [
                 (
@@ -76,6 +76,12 @@ class ReportRepository(Repository):
                     "SELECT status, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS amount FROM payments "
                     "WHERE payment_date BETWEEN ?1 AND ?2 GROUP BY status",
                     [start, end],
+                ),
+                (
+                    # Taxable value of what was collected; GST = collected - taxable (prices include GST).
+                    "SELECT COALESCE(SUM(ROUND(amount * 100.0 / (100 + COALESCE(gst_rate, ?3)))), 0) AS taxable FROM payments "
+                    "WHERE status IN ('PAID', 'REFUNDED') AND payment_date BETWEEN ?1 AND ?2",
+                    [start, end, gst_rate],
                 ),
             ]
         )

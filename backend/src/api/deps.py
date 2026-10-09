@@ -21,6 +21,7 @@ from models.domain import ROLE_BY_ID
 from models.session import CurrentUser
 from repositories.members import MemberRepository
 from repositories.users import UserRepository
+from security import session_cookie
 from security.tokens import TokenError, decode_token
 from services.auth_service import session_cache
 
@@ -53,13 +54,38 @@ async def _session_row(db: Database, user_id: int) -> dict[str, Any] | None:
     return row
 
 
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _same_origin(request: Request, config: AppConfig) -> bool:
+    """A cookie-signed-in change must come from our own pages (CSRF defence on top of SameSite=Strict)."""
+    origin = request.headers.get("origin")
+    if not origin:
+        referer = request.headers.get("referer") or ""
+        parts = referer.split("/")
+        origin = "/".join(parts[:3]) if len(parts) >= 3 and parts[0] in ("http:", "https:") else ""
+    if not origin or origin == "null":
+        return False
+    origin = origin.rstrip("/")
+    own = f"{request.url.scheme}://{request.headers.get('host', '')}"
+    forwarded = request.headers.get("x-forwarded-proto")
+    candidates = {own, f"{forwarded}://{request.headers.get('host', '')}"} if forwarded else {own}
+    return origin in candidates or ("*" not in config.allowed_origins and origin in config.allowed_origins)
+
+
 async def _authenticate(request: Request) -> CurrentUser:
-    header = request.headers.get("authorization") or ""
-    if not header.lower().startswith("bearer "):
-        raise Unauthorized("Please sign in to continue.", code="AUTH_REQUIRED")
     config: AppConfig = request.state.config
+    header = request.headers.get("authorization") or ""
+    if header.lower().startswith("bearer "):
+        token = header[7:].strip()
+    else:
+        token = session_cookie.read(request) or ""
+        if not token:
+            raise Unauthorized("Please sign in to continue.", code="AUTH_REQUIRED")
+        if request.method not in SAFE_METHODS and not _same_origin(request, config):
+            raise Forbidden("This request didn't come from the app. Please reload the page and try again.", code="BAD_ORIGIN")
     try:
-        claims = decode_token(header[7:].strip(), config.jwt_secret, now=int(time.time()))
+        claims = decode_token(token, config.jwt_secret, now=int(time.time()))
         user_id = int(claims["sub"])
     except (TokenError, KeyError, ValueError, TypeError):
         raise Unauthorized("Your session has expired. Please sign in again.", code="SESSION_EXPIRED") from None

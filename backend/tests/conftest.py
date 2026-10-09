@@ -97,6 +97,7 @@ def insert_user(db: SQLiteDatabase, *, role_id: int, name: str, email: str | Non
 def login(client: TestClient, identifier: str, password: str) -> dict[str, str]:
     response = client.post("/api/auth/login", json={"identifier": identifier, "password": password})
     assert response.status_code == 200, response.text
+    client.cookies.clear()  # tests act through the Bearer header; cookie sessions are tested on their own
     return {"Authorization": f"Bearer {response.json()['token']}"}
 
 
@@ -107,6 +108,7 @@ def activate_login(client: TestClient, identifier: str, temp_password: str, new_
         "/api/auth/change-password", json={"current_password": temp_password, "new_password": new_password}, headers=headers
     )
     assert response.status_code == 200, response.text
+    client.cookies.clear()
     return {"Authorization": f"Bearer {response.json()['token']}"}
 
 

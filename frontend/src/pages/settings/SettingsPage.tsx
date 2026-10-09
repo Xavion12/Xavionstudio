@@ -82,7 +82,7 @@ function useSave() {
       // Use what the server saved everywhere at once: this screen, the header, page titles,
       // the member app and money formatting — without a re-read that could meet an older copy.
       setCached('settings', fresh)
-      applyConfig({ gym_name: fresh.gym_name, currency: fresh.currency, member_code_prefix: fresh.member_code_prefix })
+      applyConfig({ gym_name: fresh.gym_name, currency: fresh.currency, member_code_prefix: fresh.member_code_prefix, gst_rate: Number(fresh.gst_rate ?? 0) })
       invalidate('dashboard', 'storage', 'reports')
       toast.success('Settings saved', { description: 'gym_name' in changes ? `Now showing “${fresh.gym_name}” everywhere.` : undefined })
     } catch (error) {
@@ -168,7 +168,7 @@ function ReceiptCard({ settings }: { settings: GymSettings }) {
       <CardHeader
         icon={Receipt}
         title="Receipt & GST"
-        description="Shown on every payment receipt (PDF) with your logo, the digital signature and the PAID stamp. Prices include GST: a ₹11,000 payment at 5% shows ₹10,476 taxable + ₹524 tax."
+        description="Shown on every payment receipt (PDF) with your logo, the digital signature and the PAID stamp. Plan prices include GST: ₹21,999 at 5% shows ₹20,951.43 taxable + CGST 2.5% ₹523.79 + SGST 2.5% ₹523.78. Each payment keeps the rate it was made at."
       />
       <div className="grid gap-4 px-5 pb-5 sm:grid-cols-3">
         <TextField

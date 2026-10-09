@@ -19,6 +19,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { MemberPicker } from '@/components/members/MemberPicker'
 import { QRCode } from '@/components/qr/QRCode'
 import { StatusBadge } from '@/components/ui/Badge'
+import { GstBreakdown } from '@/components/billing/GstBreakdown'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { Skeleton } from '@/components/ui/Feedback'
@@ -293,6 +294,7 @@ export function CollectPaymentDialog({ open, onClose, memberId, planId, onDone }
               </p>
             </div>
           )}
+          <GstBreakdown amount={result.payment.amount} className="mt-4 w-full text-left" />
           {result.replayed && <p className="mt-3 text-[13px] text-muted">This payment was already recorded — no duplicate was created.</p>}
         </div>
       ) : step === 'review' && member ? (
@@ -315,6 +317,7 @@ export function CollectPaymentDialog({ open, onClose, memberId, planId, onDone }
               </div>
             ))}
           </dl>
+          <GstBreakdown amount={amountPaise} />
           {selectedPlan && amountPaise < selectedPlan.price && (
             <p className="rounded-xl bg-warning-50 px-3 py-2 text-[13px] text-warning-800 dark:bg-warning-500/10 dark:text-warning-300">
               Discount of {formatMoney(selectedPlan.price - amountPaise)} on the plan price.
@@ -411,6 +414,7 @@ export function CollectPaymentDialog({ open, onClose, memberId, planId, onDone }
             hint={selectedPlan ? `Plan price ${formatMoney(selectedPlan.price)} — lower it for a discount.` : undefined}
             {...register('amount')}
           />
+          <GstBreakdown amount={amountPaise} className="-mt-2" />
 
           <div>
             <p className="mb-2 text-[13px] font-semibold text-ink-2">Payment method</p>

@@ -8,15 +8,12 @@ import type { ApiErrorShape } from '@/types'
  */
 export const API_BASE = String(import.meta.env.VITE_API_URL ?? '').trim().replace(/\/+$/, '')
 
-export const api = axios.create({ baseURL: `${API_BASE}/api`, timeout: 20_000 })
+/** The session is an HttpOnly cookie the server sets at sign-in: no script (ours or an injected
+ *  one) can read it, and nothing here stores or sends a token. */
+export const api = axios.create({ baseURL: `${API_BASE}/api`, timeout: 20_000, withCredentials: true })
 
-let authToken: string | null = null
 let unauthorizedHandler: (() => void) | null = null
 let passwordChangeHandler: (() => void) | null = null
-
-export function setAuthToken(token: string | null): void {
-  authToken = token
-}
 
 export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler
@@ -68,11 +65,6 @@ function normalize(error: AxiosError): ApiError {
     fields: body?.fields,
   })
 }
-
-api.interceptors.request.use((config) => {
-  if (authToken) config.headers.Authorization = `Bearer ${authToken}`
-  return config
-})
 
 api.interceptors.response.use(
   (response) => response,

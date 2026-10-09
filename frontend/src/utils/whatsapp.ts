@@ -42,7 +42,9 @@ export function receiptMessage(receipt: Receipt, pdfUrl: string | null = shareUr
     lines.push(`*Valid:* ${shortDate(receipt.membership_start)} to ${shortDate(receipt.membership_end)}`)
   }
   if (receipt.discount > 0) lines.push(`*Discount:* ${formatMoney(receipt.discount)}`)
-  lines.push(`*Amount paid:* ${formatMoney(receipt.amount)} (${method})`, `*Date:* ${shortDate(receipt.payment_date)}`, ...pdf, '', 'See you at the gym!', `- ${gym}`)
+  lines.push(`*Amount paid:* ${formatMoney(receipt.amount)} (${method})`)
+  if (receipt.tax) lines.push(`*GST included:* ${formatMoney(receipt.tax.amount)} (${receipt.tax.rate}%: CGST ${formatMoney(receipt.tax.cgst)} + SGST ${formatMoney(receipt.tax.sgst)})`)
+  lines.push(`*Date:* ${shortDate(receipt.payment_date)}`, ...pdf, '', 'See you at the gym!', `- ${gym}`)
   return lines.join('\n')
 }
 

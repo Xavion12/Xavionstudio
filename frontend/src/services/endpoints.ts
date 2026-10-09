@@ -136,6 +136,7 @@ export const authApi = {
   me: () => get<User>('/auth/me'),
   changePassword: (current_password: string, new_password: string) =>
     post<AuthResponse>('/auth/change-password', { current_password, new_password }),
+  logout: () => post<void>('/auth/logout'),
   logoutAll: () => post<void>('/auth/logout-all'),
   publicConfig: () => get<PublicConfig>('/config'),
   setupStatus: () => get<{ needs_setup: boolean; setup_enabled: boolean }>('/auth/setup-status'),

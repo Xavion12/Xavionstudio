@@ -1,5 +1,6 @@
 import { Pencil, Plus, Power, Tags, Users } from 'lucide-react'
 import { useState } from 'react'
+import { GstNote } from '@/components/billing/GstBreakdown'
 import { PlanDialog } from '@/components/billing/PlanDialog'
 import { Pill, StatusBadge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -115,6 +116,7 @@ export default function MembershipPlansPage() {
                   <StatusBadge status={plan.status} size="sm" />
                 </div>
                 <p className="mt-4 text-3xl font-bold tracking-tight text-ink">{formatMoney(plan.price)}</p>
+                <GstNote amount={plan.price} />
                 {monthly !== null && <p className="text-[13px] text-muted">≈ {formatMoney(monthly)} / month</p>}
                 {plan.description && <p className="mt-3 line-clamp-3 text-sm text-ink-2">{plan.description}</p>}
                 <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">

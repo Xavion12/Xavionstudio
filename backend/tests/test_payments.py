@@ -156,7 +156,8 @@ def test_receipt_shows_discount_gst_and_terms_like_a_tax_invoice(client, admin, 
 
     receipt = client.get(f"/api/payments/{paid['id']}/receipt", headers=admin).json()
     assert (receipt["price"], receipt["discount"], receipt["amount"]) == (1_300_000, 200_000, 1_100_000)
-    assert receipt["tax"] == {"rate": 5, "taxable": 1_047_619, "amount": 52_381}  # Rs 10,476.19 + Rs 523.81
+    # Rs 10,476.19 + CGST Rs 261.91 + SGST Rs 261.90
+    assert receipt["tax"] == {"rate": 5, "taxable": 1_047_619, "amount": 52_381, "cgst": 26_191, "sgst": 26_190}
     assert receipt["gym"]["gst_number"] == "33CDAPA3408D2ZH" and receipt["gym"]["sac_code"] == "999723"
     assert receipt["gym"]["signatory"] == "Xavion Fitness Studio"  # no name set: the gym signs
     client.put("/api/settings", json={"receipt_signatory": "Riyaz"}, headers=admin)
@@ -171,9 +172,31 @@ def test_receipt_shows_discount_gst_and_terms_like_a_tax_invoice(client, admin, 
 
 
 def test_receipt_without_gst_has_no_tax_lines_and_bad_gst_details_are_refused(client, admin, plans):
+    client.put("/api/settings", json={"gst_rate": 0}, headers=admin)
     member = create_member(client, admin)["member"]
     paid = pay(client, admin, member["id"], plans["Monthly"]).json()["payment"]
     receipt = client.get(f"/api/payments/{paid['id']}/receipt", headers=admin).json()
     assert receipt["tax"] is None and receipt["discount"] == 0 and receipt["terms"]  # default terms
     assert client.put("/api/settings", json={"gst_number": "ABC"}, headers=admin).status_code == 422
     assert client.put("/api/settings", json={"gst_rate": 40}, headers=admin).status_code == 422
+
+
+def test_plan_prices_include_5_percent_gst_by_default(client, admin):
+    """Rs 21,999 for 12 months, GST included: Rs 20,951.43 + CGST 2.5% Rs 523.79 + SGST 2.5% Rs 523.78."""
+    assert client.get("/api/config").json()["gst_rate"] == 5
+    plan = client.post("/api/membership-plans", json={"name": "12 Months", "duration_days": 365, "price": 2_199_900},
+                       headers=admin).json()
+    member = create_member(client, admin)["member"]
+    paid = pay(client, admin, member["id"], plan).json()["payment"]
+    tax = client.get(f"/api/payments/{paid['id']}/receipt", headers=admin).json()["tax"]
+    assert tax == {"rate": 5, "taxable": 2_095_143, "amount": 104_757, "cgst": 52_379, "sgst": 52_378}
+    assert tax["taxable"] + tax["cgst"] + tax["sgst"] == 2_199_900
+
+    # Changing the rate later never rewrites a receipt already issued.
+    client.put("/api/settings", json={"gst_rate": 18}, headers=admin)
+    assert client.get(f"/api/payments/{paid['id']}/receipt", headers=admin).json()["tax"]["rate"] == 5
+
+    report = client.get("/api/reports/payments", params={"from": "2026-01-01", "to": "2026-12-31"}, headers=admin)
+    assert report.status_code == 200, report.text
+    summary = report.json()["summary"]
+    assert (summary["taxable"], summary["gst"]) == (2_095_143, 104_757)

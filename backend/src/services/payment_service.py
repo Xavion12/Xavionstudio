@@ -27,6 +27,7 @@ from repositories.payments import PaymentRepository
 from repositories.plans import PlanRepository
 from security import links
 from utils.formatting import format_date, format_inr, member_code_candidates, receipt_number
+from utils.gst import gst_split
 from utils.upi import build_upi_uri, normalize_reference, normalize_utr
 
 from . import settings_service
@@ -402,9 +403,8 @@ class PaymentService:
         settings = await self.ctx.settings()
         list_price = row.get("list_price")
         price = max(list_price or 0, row["amount"])
-        # GST is included in what was paid: taxable value = paid / (1 + rate), split CGST / SGST.
-        rate = int(settings["gst_rate"] or 0)
-        taxable = round(row["amount"] * 100 / (100 + rate)) if rate else row["amount"]
+        # GST is included in what was paid (utils/gst.py); the rate in force when it was paid.
+        rate = row["gst_rate"] if row.get("gst_rate") is not None else int(settings["gst_rate"] or 0)
         return {
             "gym": {"name": settings["gym_name"], "address": settings["gym_address"], "phone": settings["gym_phone"],
                     "email": settings["gym_email"], "gst_number": settings["gst_number"], "sac_code": settings["sac_code"],
@@ -421,7 +421,7 @@ class PaymentService:
             "plan_name": row["plan_name"],
             "price": price,
             "discount": price - row["amount"],
-            "tax": {"rate": rate, "taxable": taxable, "amount": row["amount"] - taxable} if rate else None,
+            "tax": gst_split(row["amount"], rate),
             "terms": [line for line in (settings["receipt_terms"] or "").split("\n") if line.strip()],
             "amount": row["amount"],
             "payment_method": row["payment_method"],

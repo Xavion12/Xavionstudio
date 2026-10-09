@@ -38,6 +38,7 @@ export function useReceipt(scope: 'staff' | 'member' = 'staff') {
   const whatsapp = async (payment: { id: number }) => {
     // Open the window during the click (browsers block pop-ups opened after a network wait).
     const win = window.open('', '_blank')
+    if (win) win.opener = null // the opened tab can't reach back into this one
     setBusy(payment.id)
     try {
       const receipt = await fetchReceipt(payment.id)

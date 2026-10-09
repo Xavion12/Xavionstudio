@@ -68,6 +68,7 @@ function smartgymPwa(apiUrl: string): Plugin {
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
+        'upgrade-insecure-requests',
       ].join('; ')
       this.emitFile({
         type: 'asset',
@@ -82,6 +83,18 @@ function smartgymPwa(apiUrl: string): Plugin {
           '  X-Frame-Options: DENY',
           '  Referrer-Policy: strict-origin-when-cross-origin',
           '  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()',
+          '',
+          // Share links (receipts / reports opened from WhatsApp): never indexed, and the
+          // signed link is never sent to another site in a Referer header.
+          '/r/*',
+          '  X-Robots-Tag: noindex, nofollow',
+          '  Referrer-Policy: no-referrer',
+          '  Cache-Control: no-store',
+          '',
+          '/mr/*',
+          '  X-Robots-Tag: noindex, nofollow',
+          '  Referrer-Policy: no-referrer',
+          '  Cache-Control: no-store',
           '',
           '/assets/*',
           '  Cache-Control: public, max-age=31536000, immutable',

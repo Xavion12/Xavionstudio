@@ -794,3 +794,49 @@ export interface MemberReport {
 }
 
 export type MemberReportSection = 'membership' | 'attendance' | 'payments' | 'progress' | 'workouts'
+
+// -- Security page (admin, after re-entering the password) ------------------------------------------
+export interface SecurityUnlock {
+  token: string
+  /** epoch seconds */
+  expires_at: number
+}
+
+export interface SecurityOverview {
+  devices: number
+  people: number
+  roles: { role: Role; label: string; devices: number; people: number }[]
+  today: { sign_ins: number; people: number; failed: number }
+  categories: string[]
+  unlock_minutes: number
+}
+
+export interface DeviceSession {
+  id: number
+  user_id: number
+  name: string
+  role: Role
+  login: string | null
+  device: string
+  user_agent: string | null
+  ip: string | null
+  signed_in_at: string
+  last_active_at: string
+  expires_at: string
+  /** the device the admin is using now */
+  current: boolean
+}
+
+export interface ActivityEntry {
+  id: number
+  at: string
+  user_id: number | null
+  name: string | null
+  role: Role | null
+  action: string
+  category: string
+  summary: string
+  target: string | null
+  ip: string | null
+  device: string | null
+}

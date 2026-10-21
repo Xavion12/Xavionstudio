@@ -16,6 +16,8 @@ class CurrentUser:
     trainer_id: int | None
     must_change_password: bool
     token_version: int
+    # The signed-in device (sessions table); None only for tokens issued outside a sign-in (tests).
+    session_id: int | None = None
 
     @property
     def is_staff(self) -> bool:

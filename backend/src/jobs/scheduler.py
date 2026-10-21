@@ -23,6 +23,7 @@ from core.config import AppConfig
 from core.database import Database
 from repositories.backups import BackupRepository
 from repositories.memberships import MembershipRepository
+from repositories.security import SecurityRepository
 from services.context import Ctx
 from services.message_service import MessageService
 from services.notification_service import NotificationService
@@ -52,7 +53,11 @@ async def cleanup(ctx: Ctx) -> dict[str, int]:
     notifications = await NotificationService(ctx).cleanup()
     messages = await MessageService(ctx).cleanup()
     stale = await BackupRepository(ctx.db).expire_stale(fmt_ts(ctx.clock.utcnow() - timedelta(days=7)))
-    return {"notifications_removed": notifications, "messages_removed": messages, "unverified_backups_closed": stale}
+    # Activity log: one year. Signed-out / expired devices: 90 days of history.
+    utcnow = ctx.clock.utcnow()
+    security = await SecurityRepository(ctx.db).cleanup(fmt_ts(utcnow - timedelta(days=365)), fmt_ts(utcnow - timedelta(days=90)))
+    return {"notifications_removed": notifications, "messages_removed": messages, "unverified_backups_closed": stale,
+            "security_rows_removed": security}
 
 
 async def storage(ctx: Ctx) -> dict[str, Any]:

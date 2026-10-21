@@ -30,7 +30,7 @@ from repositories.backups import BackupRepository
 from utils.cloudflare import CloudflareError, time_travel_restore
 
 from . import settings_service
-from .auth_service import session_cache
+from .auth_service import device_cache, session_cache
 from .context import Ctx
 
 EXPORT_PAGE = 1000
@@ -319,6 +319,7 @@ class BackupService:
         # Cached settings and sessions may describe the replaced database state.
         settings_service.invalidate_cache()
         session_cache.clear()
+        device_cache.clear()
         return {"restored_to": iso, "bookmark": outcome.bookmark, "previous_bookmark": outcome.previous_bookmark, "message": outcome.message}
 
 

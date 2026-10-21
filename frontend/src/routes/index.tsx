@@ -28,6 +28,7 @@ const ExpensesPage = lazyPage(() => import('@/pages/expenses/ExpensesPage'))
 const ReportsPage = lazyPage(() => import('@/pages/reports/ReportsPage'))
 const DataBackupPage = lazyPage(() => import('@/pages/backup/DataBackupPage'))
 const SettingsPage = lazyPage(() => import('@/pages/settings/SettingsPage'))
+const SecurityPage = lazyPage(() => import('@/pages/security/SecurityPage'))
 
 const PortalHomePage = lazyPage(() => import('@/pages/portal/PortalHomePage'))
 const PortalMembershipPage = lazyPage(() => import('@/pages/portal/PortalMembershipPage'))
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
       { path: '/expenses', element: guard(ADMIN, <ExpensesPage />) },
       { path: '/reports', element: guard(STAFF, <ReportsPage />) },
       { path: '/data-backup', element: guard(ADMIN, <DataBackupPage />) },
+      { path: '/security', element: guard(ADMIN, <SecurityPage />) },
       { path: '/settings', element: guard(ADMIN, <SettingsPage />) },
     ],
   },

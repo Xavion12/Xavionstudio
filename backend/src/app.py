@@ -32,6 +32,7 @@ from api import (
     progress,
     public,
     reports,
+    security,
     settings,
     storage,
     trainers,
@@ -40,9 +41,11 @@ from api import (
 )
 from api.responses import FastJSON
 from core import runtime
+from core.clock import Clock
 from core.config import AppConfig, ConfigError, config_from_worker_env
 from core.database import Database, DatabaseError, IntegrityError
 from core.errors import AppError
+from security import activity
 
 logger = logging.getLogger("smartgym")
 
@@ -52,7 +55,7 @@ MAX_BODY_BYTES = 256 * 1024
 BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 DOC_PATHS = {"/api/docs", "/api/docs/oauth2-redirect", "/api/openapi.json"}
 ROUTERS = (auth, users, members, trainers, plans, memberships, payments, attendance, workouts, progress, notifications,
-           expenses, reports, dashboard, backups, storage, settings, portal, messages, public)
+           expenses, reports, dashboard, backups, storage, settings, portal, messages, public, security)
 
 ConfigProvider = Callable[[dict], AppConfig]
 DbProvider = Callable[[dict, AppConfig], Database]
@@ -123,11 +126,12 @@ class EdgeMiddleware:
             ]
         method = scope["method"]
         path = scope.get("path") or ""
+        body = bytearray()
 
         if method == "OPTIONS" and "access-control-request-method" in headers:
             preflight = [
                 (b"access-control-allow-methods", b"GET, POST, PUT, DELETE, OPTIONS"),
-                (b"access-control-allow-headers", b"Authorization, Content-Type, Idempotency-Key"),
+                (b"access-control-allow-headers", b"Authorization, Content-Type, Idempotency-Key, X-Security-Unlock"),
                 (b"access-control-max-age", b"86400"),  # browsers cap this (Chrome: 2 hours)
             ]
             await send({"type": "http.response.start", "status": 204 if cors else 403, "headers": cors + preflight if cors else []})
@@ -168,15 +172,21 @@ class EdgeMiddleware:
 
         db = self.db_provider(scope, config)
         state = dict(scope.get("state") or {})
-        state.update(db=db, config=config)
+        client = scope.get("client")
+        state.update(
+            db=db, config=config, user_agent=(headers.get("user-agent") or "")[:300] or None,
+            client_ip=headers.get("cf-connecting-ip") or (client[0] if client else None),
+        )
         scope["state"] = state
         response_started = False
+        status = 500
         is_docs = path in DOC_PATHS
 
         async def send_wrapper(message: dict) -> None:
-            nonlocal response_started
+            nonlocal response_started, status
             if message["type"] == "http.response.start":
                 response_started = True
+                status = message.get("status", 500)
                 raw = list(message.get("headers") or [])
                 names = {k.lower() for k, _ in raw}
                 extra = [*cors, *SECURITY_HEADERS]
@@ -204,12 +214,30 @@ class EdgeMiddleware:
                 await _send_json(
                     send_wrapper, 500, {"error": {"code": "INTERNAL_ERROR", "message": "Something went wrong. Please try again."}}
                 )
+        entries = list(state.get("activity") or [])
+        if method in BODY_METHODS and state.get("actor") is not None:
+            row = activity.from_request(
+                method=method, route=getattr(scope.get("route"), "path", None), path_params=scope.get("path_params") or {},
+                body=bytes(body), status=status, user=state["actor"],
+                at=Clock().now_ts(), ip=state.get("client_ip"), user_agent=state.get("user_agent"),
+            )
+            if row:
+                entries.append(row)
+        if entries:
+            await runtime.run_in_background(_write_activity(db, entries), "activity log")
         if state.get("messages_queued"):
             # The request has committed its WhatsApp / email rows: send them now, after the
             # response (the every-minute job retries anything that fails here).
             from jobs.scheduler import send_messages  # noqa: PLC0415 - avoids an import cycle
 
             await runtime.run_in_background(send_messages(db, config, now=True), "send messages")
+
+
+async def _write_activity(db: Database, entries: list[dict[str, Any]]) -> None:
+    try:
+        await db.batch([activity.insert_stmt(e) for e in entries])
+    except Exception:  # the log must never break a request
+        logger.exception("could not write the activity log")
 
 
 def _field_errors(exc: RequestValidationError) -> dict[str, str]:

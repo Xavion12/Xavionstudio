@@ -13,17 +13,18 @@ from typing import Any
 
 from fastapi import Depends, Query, Request
 
-from core.clock import Clock
+from core.clock import Clock, parse_ts
 from core.config import AppConfig
 from core.database import Database
 from core.errors import Forbidden, NotFound, Unauthorized
 from models.domain import ROLE_BY_ID
 from models.session import CurrentUser
 from repositories.members import MemberRepository
+from repositories.security import SecurityRepository
 from repositories.users import UserRepository
 from security import session_cookie
 from security.tokens import TokenError, decode_token
-from services.auth_service import session_cache
+from services.auth_service import device_cache, session_cache
 
 
 def get_db(request: Request) -> Database:
@@ -87,12 +88,16 @@ async def _authenticate(request: Request) -> CurrentUser:
     try:
         claims = decode_token(token, config.jwt_secret, now=int(time.time()))
         user_id = int(claims["sub"])
+        session_id = claims["sid"]
+        if not isinstance(session_id, int):
+            raise TypeError
     except (TokenError, KeyError, ValueError, TypeError):
         raise Unauthorized("Your session has expired. Please sign in again.", code="SESSION_EXPIRED") from None
     row = await _session_row(request.state.db, user_id)
     if not row or row["status"] != "ACTIVE" or row["token_version"] != claims.get("ver"):
         raise Unauthorized("Your session has ended. Please sign in again.", code="SESSION_EXPIRED")
-    return CurrentUser(
+    await _check_device(request, session_id, user_id)
+    user = CurrentUser(
         id=row["id"],
         role=ROLE_BY_ID[row["role_id"]],
         name=row["name"],
@@ -100,7 +105,32 @@ async def _authenticate(request: Request) -> CurrentUser:
         trainer_id=row["trainer_id"],
         must_change_password=bool(row["must_change_password"]),
         token_version=row["token_version"],
+        session_id=session_id,
     )
+    state = request.scope.get("state")
+    if isinstance(state, dict):
+        state["actor"] = user  # for the activity log
+    return user
+
+
+DEVICE_SEEN_EVERY = 300  # seconds between "last active" updates of a signed-in device
+
+
+async def _check_device(request: Request, session_id: int, user_id: int) -> None:
+    """The device's own session must still be open (an admin can sign out one device)."""
+    repo = SecurityRepository(request.state.db)
+    device = device_cache.get(session_id)
+    if device is None:
+        device = await repo.get_session(session_id)
+        if device:
+            device_cache.set(session_id, device)
+    if not device or device["user_id"] != user_id or device["ended_at"]:
+        raise Unauthorized("This device was signed out. Please sign in again.", code="SESSION_EXPIRED")
+    clock = Clock()
+    if (clock.utcnow() - parse_ts(device["last_seen_at"])).total_seconds() >= DEVICE_SEEN_EVERY:
+        now = clock.now_ts()
+        await repo.touch(session_id, now, request.headers.get("cf-connecting-ip"))
+        device_cache.set(session_id, {**device, "last_seen_at": now})
 
 
 async def current_user_allow_temp(request: Request) -> CurrentUser:

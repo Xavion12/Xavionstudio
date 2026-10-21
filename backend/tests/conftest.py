@@ -22,7 +22,7 @@ from security.passwords import hash_password_sync  # noqa: E402
 from core import runtime  # noqa: E402
 from services import dashboard_service, message_service, settings_service  # noqa: E402
 from utils import http  # noqa: E402
-from services.auth_service import session_cache  # noqa: E402
+from services.auth_service import device_cache, session_cache  # noqa: E402
 
 ADMIN_EMAIL = "admin@smartgym.test"
 ADMIN_PASSWORD = "Admin@12345"
@@ -62,6 +62,7 @@ def db():
     settings_service.invalidate_cache()
     dashboard_service._history.clear()
     session_cache.clear()
+    device_cache.clear()
     yield database
     database.conn.close()
 

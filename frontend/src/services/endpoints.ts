@@ -38,6 +38,10 @@ import type {
   Progress,
   PublicConfig,
   Receipt,
+  ActivityEntry,
+  DeviceSession,
+  SecurityOverview,
+  SecurityUnlock,
   RecordPaymentResult,
   RenewalDue,
   ReportData,
@@ -339,4 +343,19 @@ export const storageApi = {
   timeTravel: () => get<TimeTravelInfo>('/storage/time-travel'),
   timeTravelRestore: (timestamp: string) =>
     post<TimeTravelResult>('/storage/time-travel/restore', { timestamp, confirm_text: 'RESTORE' }, { timeout: 60_000 }),
+}
+
+/** Security page: every call except unlock carries the 15-minute unlock token. */
+const unlocked = (token: string) => ({ headers: { 'X-Security-Unlock': token } })
+export const securityApi = {
+  unlock: (password: string) => post<SecurityUnlock>('/security/unlock', { password }),
+  overview: (token: string) => get<SecurityOverview>('/security/overview', undefined, unlocked(token)),
+  sessions: (token: string, params: { role?: string; q?: string; page?: number; limit?: number }) =>
+    get<Paginated<DeviceSession>>('/security/sessions', params, unlocked(token)),
+  signOutDevice: (token: string, id: number) => post<void>(`/security/sessions/${id}/sign-out`, {}, unlocked(token)),
+  signOutPerson: (token: string, userId: number) => post<{ ended: number }>(`/security/users/${userId}/sign-out`, {}, unlocked(token)),
+  activity: (
+    token: string,
+    params: { from?: string; to?: string; category?: string; role?: string; q?: string; page?: number; limit?: number },
+  ) => get<Paginated<ActivityEntry>>('/security/activity', params, unlocked(token)),
 }

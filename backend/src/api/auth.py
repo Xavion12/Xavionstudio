@@ -11,6 +11,7 @@ from fastapi.responses import Response
 from schemas.requests import ChangePasswordIn, LoginIn, SetupIn
 from security import session_cookie
 from security.rate_limit import check_rate
+from security.tokens import TokenError, decode_token
 from services.auth_service import AuthService
 from services.context import Ctx
 
@@ -36,8 +37,19 @@ async def login(body: LoginIn, request: Request, ctx: Ctx = Depends(public_ctx))
 
 
 @router.post("/logout", status_code=204)
-async def logout(request: Request) -> Response:
-    """Ends this browser's session (clears the cookie). Works even if the session already expired."""
+async def logout(request: Request, ctx: Ctx = Depends(public_ctx)) -> Response:
+    """Ends this device's session (it leaves the signed-in devices list) and clears the cookie.
+    Works even if the session already expired."""
+    header = request.headers.get("authorization") or ""
+    token = header[7:].strip() if header.lower().startswith("bearer ") else session_cookie.read(request)
+    if token:
+        try:
+            claims = decode_token(token, ctx.config.jwt_secret, now=int(time.time()))
+            user_id, session_id = int(claims["sub"]), claims.get("sid")
+        except (TokenError, KeyError, ValueError, TypeError):
+            user_id, session_id = 0, None
+        if user_id and isinstance(session_id, int):
+            await AuthService(ctx).logout(user_id, session_id)
     return session_cookie.clear(no_content(), request)
 
 

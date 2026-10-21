@@ -13,6 +13,7 @@ import {
   ReceiptIndianRupee,
   ScanLine,
   Settings,
+  ShieldCheck,
   Tags,
   User,
   UserCog,
@@ -48,6 +49,7 @@ export const APP_NAV: NavItem[] = [
   { to: '/expenses', label: 'Expenses', icon: ReceiptIndianRupee, roles: ['ADMIN'] },
   { to: '/reports', label: 'Reports', icon: FileBarChart, roles: TEAM },
   { to: '/data-backup', label: 'Data & Backup', icon: DatabaseBackup, roles: ['ADMIN'] },
+  { to: '/security', label: 'Security', icon: ShieldCheck, roles: ['ADMIN'] },
   { to: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] },
 ]
 

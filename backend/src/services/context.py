@@ -25,6 +25,29 @@ class Ctx:
     state: dict[str, Any] | None = None
     _settings: dict[str, Any] | None = None
 
+    # -- the request's device, for sessions and the activity log ---------------------------------------
+    @property
+    def client_ip(self) -> str | None:
+        return (self.state or {}).get("client_ip")
+
+    @property
+    def user_agent(self) -> str | None:
+        return (self.state or {}).get("user_agent")
+
+    def log(self, action: str, summary: str, *, user_id: int | None = None, category: str = "Sign-in",
+            target: str | None = None, session_id: int | None = None) -> None:
+        """Add an activity-log entry; the edge middleware writes it after the response (also on errors,
+        so failed sign-ins are recorded)."""
+        if self.state is None:
+            return
+        from security.activity import entry  # noqa: PLC0415
+
+        self.state.setdefault("activity", []).append(entry(
+            at=self.now, user_id=user_id if user_id is not None else self.actor_id, action=action, category=category,
+            summary=summary, target=target, ip=self.client_ip, user_agent=self.user_agent,
+            session_id=session_id if session_id is not None else (self.user.session_id if self.user else None),
+        ))
+
     def messages_queued(self) -> None:
         """WhatsApp / email rows were added: send them as soon as this request has finished."""
         if self.state is not None:

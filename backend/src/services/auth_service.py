@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hmac
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from core.cache import TTLCache
@@ -16,8 +16,10 @@ from core.clock import fmt_ts, iso_z, parse_ts
 from core.errors import Conflict, Forbidden, TooManyRequests, Unauthorized, ValidationFailed
 from models.domain import ROLE_BY_ID, ROLE_IDS
 from models.session import CurrentUser
+from repositories.security import SecurityRepository
 from repositories.users import UserRepository
 from security.passwords import hash_password, needs_rehash, password_problem, verify_password
+from security.activity import mask_login
 from security.rate_limit import check_login_rate
 from security.tokens import create_token
 from utils.formatting import digits_only, member_code_candidates, normalize_phone
@@ -27,13 +29,20 @@ from .context import Ctx
 MAX_FAILED_LOGINS = 5
 LOCK_MINUTES = 15
 
-# Session users are cached briefly per isolate (saves one D1 read per request). Revocations
-# take effect immediately on the isolate that handles them and within 30 s everywhere else.
+# Session users and devices are cached briefly per isolate (saves D1 reads per request).
+# Revocations take effect immediately on the isolate that handles them and within 30 s elsewhere.
 session_cache = TTLCache(30, 1024)
+device_cache = TTLCache(30, 4096)
+
+ROLE_LABELS = {"ADMIN": "Admin", "STAFF": "Staff", "TRAINER": "Trainer", "MEMBER": "Member"}
 
 
 def forget_user(user_id: int) -> None:
     session_cache.pop(user_id)
+
+
+def forget_device(session_id: int) -> None:
+    device_cache.pop(session_id)
 
 
 def login_label(row: dict[str, Any]) -> str:
@@ -61,12 +70,14 @@ class AuthService:
     def __init__(self, ctx: Ctx) -> None:
         self.ctx = ctx
         self.users = UserRepository(ctx.db)
+        self.sessions = SecurityRepository(ctx.db)
 
     # -- helpers -------------------------------------------------------------------------------
     def _secret(self) -> dict[str, Any]:
         return {"secret": self.ctx.config.auth_secret, "iterations": self.ctx.config.password_iterations}
 
-    def issue_token(self, row: dict[str, Any], remember: bool) -> tuple[str, int]:
+    async def issue_token(self, row: dict[str, Any], remember: bool) -> tuple[str, int, int]:
+        """A new signed-in device: a sessions row plus a token that carries its id (``sid``)."""
         role = ROLE_BY_ID[row["role_id"]]
         now = int(time.time())
         config = self.ctx.config
@@ -77,8 +88,13 @@ class AuthService:
         else:
             ttl = config.staff_token_hours * 3_600
         expires = now + ttl
-        claims = {"sub": str(row["id"]), "role": role, "ver": row["token_version"], "iat": now, "exp": expires}
-        return create_token(claims, config.jwt_secret), expires
+        session_id = await self.sessions.start_session(
+            user_id=row["id"], token_version=row["token_version"], now=self.ctx.now,
+            expires_at=fmt_ts(datetime.fromtimestamp(expires, timezone.utc)), ip=self.ctx.client_ip,
+            user_agent=(self.ctx.user_agent or "")[:300] or None,
+        )
+        claims = {"sub": str(row["id"]), "role": role, "ver": row["token_version"], "sid": session_id, "iat": now, "exp": expires}
+        return create_token(claims, config.jwt_secret), expires, session_id
 
     async def _identify(self, identifier: str) -> list[dict[str, Any]]:
         text = identifier.strip()
@@ -122,9 +138,16 @@ class AuthService:
         row = rows[0] if rows else None
         if row is None:
             await verify_password(password, None, **self._secret())  # equal timing for unknown accounts
+            self.ctx.log("LOGIN_FAILED", f"Failed sign-in: unknown login {mask_login(identifier)}")
             raise Unauthorized("Incorrect login or password.", code="INVALID_CREDENTIALS")
 
-        if not await self._check_password(row, password):
+        try:
+            correct = await self._check_password(row, password)
+        except TooManyRequests:
+            self.ctx.log("LOGIN_FAILED", "Failed sign-in: account locked after wrong passwords", user_id=row["id"])
+            raise
+        if not correct:
+            self.ctx.log("LOGIN_FAILED", "Failed sign-in: wrong password", user_id=row["id"])
             raise Unauthorized("Incorrect login or password.", code="INVALID_CREDENTIALS")
 
         if row["status"] != "ACTIVE":
@@ -136,7 +159,8 @@ class AuthService:
         if needs_rehash(row["password_hash"], self.ctx.config.password_iterations):
             new_hash = await hash_password(password, **self._secret())
         await self.users.record_success(row["id"], self.ctx.now, new_hash)
-        token, expires = self.issue_token(row, remember)
+        token, expires, session_id = await self.issue_token(row, remember)
+        self.ctx.log("LOGIN", f"Signed in ({ROLE_LABELS[ROLE_BY_ID[row['role_id']]]})", user_id=row["id"], session_id=session_id)
         return {"token": token, "expires_at": expires, "user": user_out(row)}
 
     async def me(self, user: CurrentUser) -> dict[str, Any]:
@@ -154,14 +178,24 @@ class AuthService:
             raise ValidationFailed("Choose a password different from the current one.", fields={"new_password": "Must be different"})
         version = row["token_version"] + 1  # signs out every other device
         await self.users.change_password(user.id, await hash_password(new, **self._secret()), version, self.ctx.now)
+        await self.ctx.db.run(*self.sessions.end_user_sessions_stmt(user.id, "PASSWORD_CHANGED", self.ctx.now))
         forget_user(user.id)
         updated = {**row, "token_version": version, "must_change_password": 0}
-        token, expires = self.issue_token(updated, remember=False)
+        token, expires, session_id = await self.issue_token(updated, remember=False)
+        self.ctx.log("PASSWORD_CHANGED", "Changed their password (other devices signed out)", session_id=session_id)
         return {"token": token, "expires_at": expires, "user": user_out(updated)}
 
     async def logout_everywhere(self, user: CurrentUser) -> None:
         await self.users.bump_token_version(user.id)
+        await self.ctx.db.run(*self.sessions.end_user_sessions_stmt(user.id, "LOGOUT_ALL", self.ctx.now))
         forget_user(user.id)
+        self.ctx.log("LOGOUT_ALL", "Signed out on every device")
+
+    async def logout(self, user_id: int, session_id: int | None) -> None:
+        """This device signs out (its session ends; the cookie is cleared by the route)."""
+        if session_id and await self.sessions.end_session(session_id, "LOGOUT", self.ctx.now):
+            forget_device(session_id)
+            self.ctx.log("LOGOUT", "Signed out", user_id=user_id, session_id=session_id)
 
     # -- first-run setup ---------------------------------------------------------------------------
     async def setup_status(self) -> dict[str, bool]:
@@ -183,5 +217,6 @@ class AuthService:
             now=self.ctx.now, must_change_password=False,
         )
         row = await self.users.get(user_id)
-        token, expires = self.issue_token(row, remember=False)
+        token, expires, session_id = await self.issue_token(row, remember=False)
+        self.ctx.log("SETUP", "Set up the gym (first admin)", user_id=user_id, session_id=session_id)
         return {"token": token, "expires_at": expires, "user": user_out(row)}

@@ -50,6 +50,8 @@ DEFAULTS: dict[str, str] = {
     "notify_activation": "1",
     "notify_renewal": "1",
     "notify_trainer": "1",
+    # Every signed-in device must share its location (GPS) to use the app; the admin can turn it off.
+    "location_required": "1",
     # Attendance: scans alternate check-in / check-out, several visits a day.
     "attendance_checkout": "1",
     "attendance_grace_days": "0",
@@ -63,7 +65,7 @@ DEFAULTS: dict[str, str] = {
 }
 
 BOOL_KEYS = {
-    "upi_enabled", "reminders_enabled", "notify_payment", "notify_activation", "notify_renewal", "notify_trainer",
+    "upi_enabled", "reminders_enabled", "notify_payment", "notify_activation", "notify_renewal", "notify_trainer", "location_required",
     "attendance_checkout", "storage_alerts_enabled",
 }
 INT_KEYS = {

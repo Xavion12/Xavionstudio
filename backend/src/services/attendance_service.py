@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
+from core import realtime
 from core.clock import fmt_ts, iso_z, minutes_between, parse_ts
 from core.database import IntegrityError
 from core.errors import Conflict, NotFound
@@ -139,6 +140,14 @@ class AttendanceService:
 
     async def _record(self, member: dict[str, Any], settings: dict[str, Any], today: date, method: str,
                       action: Action | None = None) -> dict[str, Any]:
+        result = await self._record_visit(member, settings, today, method, action)
+        if result.get("ok"):
+            # The member's own app shows the check-in / check-out at once.
+            self.ctx.live(realtime.changed([f"member:{member['id']}"], ["attendance", "portal"]))
+        return result
+
+    async def _record_visit(self, member: dict[str, Any], settings: dict[str, Any], today: date, method: str,
+                            action: Action | None = None) -> dict[str, Any]:
         now = self.ctx.now
         rules = VisitRules.build(settings, now)
         last = visit_from_json(member.get("last_visit"))

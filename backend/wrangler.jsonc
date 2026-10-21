@@ -34,6 +34,18 @@
 			"migrations_dir": "migrations"
 		}
 	],
+	// Live updates (WebSocket): the RealtimeHub Durable Object lives in the separate "xavion-realtime"
+	// Worker (../realtime) — deploy that one first. Without this binding the app still works; screens
+	// just refresh on their own instead of instantly.
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "REALTIME",
+				"class_name": "RealtimeHub",
+				"script_name": "xavion-realtime"
+			}
+		]
+	},
 	// Once a day at 00:30 UTC = 06:00 IST: membership statuses, expiry reminders (in-app, and
 	// WhatsApp / email when switched on), clean-up of non-critical data and the storage snapshot.
 	// Every minute: send queued WhatsApp / email messages (does nothing until a channel is set up).

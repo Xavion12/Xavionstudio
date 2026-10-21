@@ -1,0 +1,12 @@
+{
+  "name": "xavion-realtime",
+  "private": true,
+  "description": "Live updates (WebSocket Durable Object) for Xavion Fitness",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

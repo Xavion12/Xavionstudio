@@ -147,7 +147,7 @@ def from_request(*, method: str, route: str | None, path_params: dict[str, Any],
     """The log entry for a successful API change, or None for reads, failures and routine clicks."""
     if route and not route.startswith("/api/"):
         route = "/api" + route  # the routers are mounted under /api
-    if not route or status >= 400 or route in _SKIP or route.startswith("/api/auth/") or route.startswith("/api/security/"):
+    if not route or status >= 400 or route in _SKIP or route.startswith("/api/auth/") or route.startswith(("/api/security/", "/api/realtime/")):
         return None
     label = ROUTES.get((method, route))
     if label is None:

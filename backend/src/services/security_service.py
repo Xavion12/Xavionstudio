@@ -12,6 +12,7 @@ import time
 from datetime import date
 from typing import Any
 
+from core import realtime
 from core.clock import iso_z
 from core.errors import Forbidden, NotFound, ValidationFailed
 from models.domain import ROLE_BY_ID, ROLE_IDS
@@ -79,6 +80,7 @@ class SecurityService:
         ]
         today = await self.repo.sign_ins_since(self.ctx.clock.day_start_utc(self.ctx.clock.today()))
         return {
+            "online": len(await realtime.online_sessions(self.ctx.env)),
             "devices": sum(r["devices"] for r in roles),
             "people": sum(r["people"] for r in roles),
             "roles": roles,
@@ -92,6 +94,7 @@ class SecurityService:
             self.ctx.now, role_id=ROLE_IDS.get(role) if role else None, q=q, limit=page.limit, offset=page.offset,
         )
         current = self.ctx.user.session_id if self.ctx.user else None
+        online = await realtime.online_sessions(self.ctx.env)
         items = [
             {
                 "id": r["id"],
@@ -104,6 +107,12 @@ class SecurityService:
                 "last_active_at": iso_z(r["last_seen_at"]),
                 "expires_at": iso_z(r["expires_at"]),
                 "current": r["id"] == current,
+                # The app is open on this device right now (live connection).
+                "online": r["id"] in online,
+                "location": {
+                    "lat": r["lat"], "lng": r["lng"], "accuracy_m": r["accuracy_m"], "at": iso_z(r["located_at"]),
+                } if r["lat"] is not None else None,
+                "place": ", ".join(p for p in (r["city"], r["region"], r["country"]) if p) or None,
             }
             for r in rows
         ]
@@ -117,6 +126,7 @@ class SecurityService:
             raise ValidationFailed("This is the device you're using. Use Sign out in the menu instead.")
         await self.repo.end_session(session_id, "SIGNED_OUT_BY_ADMIN", self.ctx.now)
         forget_device(session_id)
+        self.ctx.live(realtime.message([f"sid:{session_id}"], {"type": "signed_out"}, close=True))
         who = await UserRepository(self.ctx.db).get(device["user_id"])
         self.ctx.log("DEVICE_SIGNED_OUT", "Signed out a device", category="Security", target=who["name"] if who else None)
 
@@ -131,6 +141,7 @@ class SecurityService:
         await users.bump_token_version(user_id)
         result = await self.ctx.db.run(*self.repo.end_user_sessions_stmt(user_id, "SIGNED_OUT_BY_ADMIN", self.ctx.now))
         forget_user(user_id)
+        self.ctx.live(realtime.message([f"user:{user_id}"], {"type": "signed_out"}, close=True))
         self.ctx.log("PERSON_SIGNED_OUT", "Signed out every device of a person", category="Security", target=who["name"])
         return result.changes
 

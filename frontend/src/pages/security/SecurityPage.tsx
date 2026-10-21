@@ -1,4 +1,4 @@
-import { History, Lock, LogOut, MonitorSmartphone, MoreVertical, ShieldAlert, ShieldCheck, UserCheck, Users } from 'lucide-react'
+import { ExternalLink, History, Lock, LogOut, MapPin, MonitorSmartphone, MoreVertical, ShieldAlert, ShieldCheck, UserCheck, Users } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Pill } from '@/components/ui/Badge'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -14,6 +14,7 @@ import { useApi } from '@/hooks/useApi'
 import { useDocumentTitle } from '@/hooks/useUtilities'
 import { isApiError } from '@/services/api'
 import { securityApi } from '@/services/endpoints'
+import { useLiveStatus } from '@/services/realtime'
 import type { ActivityEntry, DeviceSession, Role, SecurityUnlock } from '@/types'
 import { cn } from '@/utils/cn'
 import { addDaysISO, formatDateTime, formatNumber, formatTime, relativeTime, todayISO } from '@/utils/format'
@@ -124,9 +125,12 @@ function Unlocked({ token, expiresAt, onLock }: { token: string; expiresAt: numb
         title="Security"
         description={`Unlocked · locks again at ${formatTime(new Date(expiresAt * 1000).toISOString())}`}
         actions={
-          <Button variant="secondary" icon={Lock} onClick={onLock}>
-            Lock now
-          </Button>
+          <div className="flex items-center gap-2">
+            <LiveBadge />
+            <Button variant="secondary" icon={Lock} onClick={onLock}>
+              Lock now
+            </Button>
+          </div>
         }
       />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
@@ -134,7 +138,7 @@ function Unlocked({ token, expiresAt, onLock }: { token: string; expiresAt: numb
           label="Signed in now"
           icon={MonitorSmartphone}
           value={formatNumber(data?.devices)}
-          hint={data ? `${plural(data.people, 'person').replace('persons', 'people')} on ${plural(data.devices, 'device')}` : undefined}
+          hint={data ? `${plural(data.people, 'person').replace('persons', 'people')} · ${formatNumber(data.online)} app${data.online === 1 ? '' : 's'} open now` : undefined}
           loading={!data}
         />
         <StatCard
@@ -248,11 +252,15 @@ function Devices({
                 header: 'Device',
                 cell: (s) => (
                   <div>
-                    <p className="font-medium text-ink">{s.device}</p>
+                    <p className="flex items-center gap-1.5 font-medium text-ink">
+                      <OnlineDot online={s.online} />
+                      {s.device}
+                    </p>
                     <p className="text-[12px] text-muted">{s.ip ?? 'IP not recorded'}</p>
                   </div>
                 ),
               },
+              { key: 'where', header: 'Location', cell: (s) => <Where s={s} /> },
               { key: 'signed', header: 'Signed in', className: 'hidden lg:table-cell', cell: (s) => <span className="whitespace-nowrap">{formatDateTime(s.signed_in_at)}</span> },
               { key: 'seen', header: 'Last active', cell: (s) => <span className="whitespace-nowrap">{relativeTime(s.last_active_at)}</span> },
               { key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right', cell: (s) => <DeviceActions s={s} onEnd={setEnding} /> },
@@ -261,7 +269,9 @@ function Devices({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <Person s={s} />
-                  <p className="text-[12px] text-muted">
+                  <Where s={s} />
+                  <p className="flex items-center gap-1.5 text-[12px] text-muted">
+                    <OnlineDot online={s.online} />
                     {s.device} · active {relativeTime(s.last_active_at)}
                   </p>
                 </div>
@@ -303,6 +313,62 @@ function Devices({
         }}
       />
     </>
+  )
+}
+
+function LiveBadge() {
+  const status = useLiveStatus()
+  const live = status === 'live'
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold',
+        live ? 'border-success-200 bg-success-50 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300' : 'border-line text-muted',
+      )}
+      title={live ? 'Updates appear the moment they happen' : 'Reconnecting… the page still refreshes on its own'}
+    >
+      <span className={cn('size-2 rounded-full', live ? 'animate-pulse bg-success-500' : 'bg-neutral-400')} aria-hidden />
+      {live ? 'Live' : 'Connecting'}
+    </span>
+  )
+}
+
+function OnlineDot({ online }: { online: boolean }) {
+  return (
+    <span
+      className={cn('inline-block size-2 shrink-0 rounded-full', online ? 'bg-success-500' : 'bg-neutral-300 dark:bg-neutral-600')}
+      title={online ? 'App open now' : 'App not open right now'}
+      aria-label={online ? 'Online now' : 'Not open now'}
+    />
+  )
+}
+
+/** GPS position (map link, accuracy, when) and the network's city. */
+function Where({ s }: { s: DeviceSession }) {
+  const gps = s.location
+  return (
+    <div className="min-w-0 text-[12px]">
+      {gps ? (
+        <a
+          href={`https://www.google.com/maps?q=${gps.lat},${gps.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 font-semibold text-ink hover:underline"
+        >
+          <MapPin className="size-3.5 text-success-600" aria-hidden />
+          {gps.lat.toFixed(4)}, {gps.lng.toFixed(4)}
+          <ExternalLink className="size-3 text-muted" aria-hidden />
+        </a>
+      ) : (
+        <span className="inline-flex items-center gap-1 font-medium text-warning-700 dark:text-warning-300">
+          <MapPin className="size-3.5" aria-hidden /> No GPS yet
+        </span>
+      )}
+      <p className="text-muted">
+        {[gps?.accuracy_m != null ? `±${formatNumber(gps.accuracy_m)} m` : null, gps?.at ? relativeTime(gps.at) : null, s.place].filter(Boolean).join(' · ') ||
+          'Network location not available'}
+      </p>
+    </div>
   )
 }
 

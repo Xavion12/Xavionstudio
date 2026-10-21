@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
+from core import realtime
 from core.clock import fmt_ts, iso_z
 from core.database import Statement
 from core.errors import NotFound
@@ -93,6 +94,9 @@ class NotificationService:
             if kind in MESSAGE_EVENTS and member.get("id"):
                 params = {k: v for k, v in context.items() if k in MESSAGE_EVENTS[kind]}
                 statements += await messages.event_statements(member["id"], kind, params, f"{member['id']}:{self.ctx.now}")
+        if user_id and events:
+            # The member's app: bell, payments and membership refresh at once.
+            self.ctx.live(realtime.changed([f"user:{user_id}"], ["notifications", "portal", "payments"]))
         return statements
 
     async def notify(self, member: dict[str, Any], kind: str, **context: Any) -> None:
@@ -119,6 +123,9 @@ class NotificationService:
                 targets = len(user_ids)
             in_app = f"{title}: {message}" if title else message
             created = await self.repo.insert_for_users(user_ids, "ANNOUNCEMENT", in_app, self.ctx.now)
+            if user_ids:
+                self.ctx.live(realtime.changed([f"user:{u}" for u in user_ids[:500]] if len(user_ids) <= 500 else ["role:MEMBER"],
+                                               ["notifications", "portal"]))
         settings = await self.ctx.settings()
         queued = await MessageService(self.ctx).queue_offer(
             title=title or f"News from {settings['gym_name']}", message=message, segment=segment, member_ids=member_ids,

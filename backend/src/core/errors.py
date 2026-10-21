@@ -64,6 +64,13 @@ class ValidationFailed(AppError):
     code = "VALIDATION_FAILED"
 
 
+class LocationRequired(AppError):
+    """The gym requires every signed-in device to share its location before using the app."""
+
+    status = 428
+    code = "LOCATION_REQUIRED"
+
+
 class TooManyRequests(AppError):
     status = 429
     code = "TOO_MANY_REQUESTS"

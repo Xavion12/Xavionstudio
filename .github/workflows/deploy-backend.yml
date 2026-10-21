@@ -1,6 +1,6 @@
 name: Deploy
 # One Worker serves the whole site (https://app.xavionfitness.in): the React app from frontend/dist
-# and the Python API on /api/*. Every push to main rebuilds the app, runs the tests, applies any
+# and the Python API on /api/*; a small second Worker (realtime/) holds the live-update WebSockets. Every push to main rebuilds the app, runs the tests, applies any
 # new D1 migrations (already-applied ones are skipped) and deploys. Also runnable by hand:
 # GitHub -> Actions -> Deploy -> Run workflow.
 # Repository secrets needed (Settings -> Secrets and variables -> Actions):
@@ -9,7 +9,7 @@ name: Deploy
 on:
   push:
     branches: [main]
-    paths: ['backend/**', 'frontend/**', '.github/workflows/**']
+    paths: ['backend/**', 'frontend/**', 'realtime/**', '.github/workflows/**']
   workflow_dispatch:
 
 concurrency:
@@ -37,6 +37,9 @@ jobs:
       - run: cd backend && uv sync
       - name: Tests
         run: cd backend && uv run pytest -q
+
+      - name: Deploy live updates (WebSocket hub; the API binds to it, so it goes first)
+        run: cd realtime && npx --yes wrangler@4 deploy
 
       - name: Apply database migrations
         run: cd backend && npx --yes wrangler@4 d1 migrations apply smartgym --remote

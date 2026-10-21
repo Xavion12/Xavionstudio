@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
-from schemas.requests import ChangePasswordIn, LoginIn, SetupIn
+from schemas.requests import ChangePasswordIn, LocationIn, LoginIn, SetupIn
 from security import session_cookie
 from security.rate_limit import check_rate
 from security.tokens import TokenError, decode_token
@@ -51,6 +51,13 @@ async def logout(request: Request, ctx: Ctx = Depends(public_ctx)) -> Response:
         if user_id and isinstance(session_id, int):
             await AuthService(ctx).logout(user_id, session_id)
     return session_cookie.clear(no_content(), request)
+
+
+@router.post("/location")
+async def share_location(body: LocationIn, ctx: Ctx = Depends(temp_ctx)) -> FastJSON:
+    """This device's location (compulsory while Settings -> location_required is on)."""
+    accuracy = round(body.accuracy) if body.accuracy is not None else None
+    return ok(await AuthService(ctx).share_location(ctx.user, body.lat, body.lng, accuracy))
 
 
 @router.get("/me")

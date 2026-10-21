@@ -18,23 +18,31 @@ _WHO = (
 class SecurityRepository(Repository):
     # -- sessions ------------------------------------------------------------------------------------
     async def start_session(self, *, user_id: int, token_version: int, now: str, expires_at: str, ip: str | None,
-                            user_agent: str | None) -> int:
+                            user_agent: str | None, place: dict[str, str | None] | None = None) -> int:
+        place = place or {}
         result = await self.db.run(
-            "INSERT INTO sessions (user_id, token_version, created_at, last_seen_at, expires_at, ip, user_agent) "
-            "VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6) RETURNING id",
-            [user_id, token_version, now, expires_at, ip, user_agent],
+            "INSERT INTO sessions (user_id, token_version, created_at, last_seen_at, expires_at, ip, user_agent, city, region, country) "
+            "VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6, ?7, ?8, ?9) RETURNING id",
+            [user_id, token_version, now, expires_at, ip, user_agent, place.get("city"), place.get("region"), place.get("country")],
         )
         return result.first["id"]
 
     async def get_session(self, session_id: int) -> dict[str, Any] | None:
         return await self.db.one(
-            "SELECT id, user_id, token_version, last_seen_at, expires_at, ended_at FROM sessions WHERE id = ?1", [session_id]
+            "SELECT id, user_id, token_version, last_seen_at, expires_at, ended_at, located_at FROM sessions WHERE id = ?1", [session_id]
         )
 
     async def touch(self, session_id: int, now: str, ip: str | None) -> None:
         await self.db.run(
             "UPDATE sessions SET last_seen_at = ?2, ip = COALESCE(?3, ip) WHERE id = ?1 AND ended_at IS NULL", [session_id, now, ip]
         )
+
+    async def set_location(self, session_id: int, *, lat: float, lng: float, accuracy_m: int | None, now: str) -> int:
+        result = await self.db.run(
+            "UPDATE sessions SET lat = ?2, lng = ?3, accuracy_m = ?4, located_at = ?5, last_seen_at = ?5 WHERE id = ?1 AND ended_at IS NULL",
+            [session_id, lat, lng, accuracy_m, now],
+        )
+        return result.changes
 
     async def end_session(self, session_id: int, reason: str, now: str) -> int:
         result = await self.db.run(
@@ -75,7 +83,8 @@ class SecurityRepository(Repository):
         sql_where = where(clauses)
         results = await self.db.batch([
             (
-                f"SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, s.ip, s.user_agent, {_WHO} "
+                "SELECT s.id, s.user_id, s.created_at, s.last_seen_at, s.expires_at, s.ip, s.user_agent, s.lat, s.lng, "
+                f"s.accuracy_m, s.located_at, s.city, s.region, s.country, {_WHO} "
                 f"FROM sessions s JOIN users u ON u.id = s.user_id {sql_where} "
                 f"ORDER BY s.last_seen_at DESC, s.id DESC LIMIT {bind(limit)} OFFSET {bind(offset)}",
                 bind.params,

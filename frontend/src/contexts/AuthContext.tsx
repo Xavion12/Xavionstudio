@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { clearApiCache } from '@/hooks/useApi'
 import { onPasswordChangeRequired, onUnauthorized } from '@/services/api'
 import { authApi } from '@/services/endpoints'
+import { startLive, stopLive } from '@/services/realtime'
 import type { AuthResponse, Role, User } from '@/types'
 import { KEYS, readJSON, writeJSON, writeStorage } from '@/utils/storage'
 
@@ -52,6 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(auth.user)
     setVerified(true)
   }, [])
+
+  // Live updates (WebSocket) while signed in; an admin signing this device out ends it at once.
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    startLive(() => clearSession(true))
+    return stopLive
+  }, [userId, clearSession])
 
   useEffect(() => {
     onUnauthorized(() => clearSession(true))

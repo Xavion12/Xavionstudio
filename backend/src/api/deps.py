@@ -16,7 +16,7 @@ from fastapi import Depends, Query, Request
 from core.clock import Clock, parse_ts
 from core.config import AppConfig
 from core.database import Database
-from core.errors import Forbidden, NotFound, Unauthorized
+from core.errors import Forbidden, LocationRequired, NotFound, Unauthorized
 from models.domain import ROLE_BY_ID
 from models.session import CurrentUser
 from repositories.members import MemberRepository
@@ -24,6 +24,7 @@ from repositories.security import SecurityRepository
 from repositories.users import UserRepository
 from security import session_cookie
 from security.tokens import TokenError, decode_token
+from services import settings_service
 from services.auth_service import device_cache, session_cache
 
 
@@ -96,7 +97,7 @@ async def _authenticate(request: Request) -> CurrentUser:
     row = await _session_row(request.state.db, user_id)
     if not row or row["status"] != "ACTIVE" or row["token_version"] != claims.get("ver"):
         raise Unauthorized("Your session has ended. Please sign in again.", code="SESSION_EXPIRED")
-    await _check_device(request, session_id, user_id)
+    device = await _check_device(request, session_id, user_id)
     user = CurrentUser(
         id=row["id"],
         role=ROLE_BY_ID[row["role_id"]],
@@ -110,13 +111,14 @@ async def _authenticate(request: Request) -> CurrentUser:
     state = request.scope.get("state")
     if isinstance(state, dict):
         state["actor"] = user  # for the activity log
+        state["device_located"] = bool(device.get("located_at"))
     return user
 
 
 DEVICE_SEEN_EVERY = 300  # seconds between "last active" updates of a signed-in device
 
 
-async def _check_device(request: Request, session_id: int, user_id: int) -> None:
+async def _check_device(request: Request, session_id: int, user_id: int) -> dict[str, Any]:
     """The device's own session must still be open (an admin can sign out one device)."""
     repo = SecurityRepository(request.state.db)
     device = device_cache.get(session_id)
@@ -130,7 +132,9 @@ async def _check_device(request: Request, session_id: int, user_id: int) -> None
     if (clock.utcnow() - parse_ts(device["last_seen_at"])).total_seconds() >= DEVICE_SEEN_EVERY:
         now = clock.now_ts()
         await repo.touch(session_id, now, request.headers.get("cf-connecting-ip"))
-        device_cache.set(session_id, {**device, "last_seen_at": now})
+        device = {**device, "last_seen_at": now}
+        device_cache.set(session_id, device)
+    return device
 
 
 async def current_user_allow_temp(request: Request) -> CurrentUser:
@@ -142,7 +146,21 @@ async def current_user(request: Request) -> CurrentUser:
     user = await _authenticate(request)
     if user.must_change_password:
         raise Forbidden("Please set a new password to continue.", code="PASSWORD_CHANGE_REQUIRED")
+    await _require_location(request, user)
     return user
+
+
+async def _require_location(request: Request, user: CurrentUser) -> None:
+    """Location sharing is compulsory (Settings -> location_required): until this device has sent its
+    GPS location (POST /api/auth/location) only sign-in routes work. An admin can always reach
+    PUT /api/settings, so a computer without location can turn the requirement off."""
+    if request.scope.get("state", {}).get("device_located"):
+        return
+    if user.is_admin and request.method == "PUT" and request.url.path == "/api/settings":
+        return
+    settings = await settings_service.get_settings(request.state.db)
+    if settings["location_required"]:
+        raise LocationRequired("Share this device's location to keep using the app.")
 
 
 def require_roles(*roles: str):

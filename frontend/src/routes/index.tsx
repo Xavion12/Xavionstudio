@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet } from 'react-router'
 import type { Role } from '@/types'
+import { LocationGate } from '@/components/location/LocationGate'
 import { HomeRedirect, lazyPage, RequireRole } from './guards'
 
 const AppLayout = lazyPage(() => import('@/layouts/AppLayout'))
@@ -56,7 +57,8 @@ export const router = createBrowserRouter([
   { path: '/mr/:token', element: <SharedDocumentPage /> },
   { path: '/account/password', element: guard(['ADMIN', 'STAFF', 'TRAINER', 'MEMBER'], <ChangePasswordPage />) },
   {
-    element: guard(TEAM, <AppLayout />),
+    // Location sharing is compulsory before any screen opens (Settings → Device location).
+    element: guard(TEAM, <LocationGate><AppLayout /></LocationGate>),
     children: [
       { path: '/dashboard', element: guard(STAFF, <DashboardPage />) },
       { path: '/trainer', element: guard(['TRAINER'], <TrainerDashboardPage />) },
@@ -80,7 +82,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/portal',
-    element: guard(['MEMBER'], <PortalLayout />),
+    element: guard(['MEMBER'], <LocationGate><PortalLayout /></LocationGate>),
     children: [
       { index: true, element: <PortalHomePage /> },
       { path: 'membership', element: <PortalMembershipPage /> },

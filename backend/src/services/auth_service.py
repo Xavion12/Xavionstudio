@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from core import realtime
 from core.cache import TTLCache
 from core.clock import fmt_ts, iso_z, parse_ts
 from core.errors import Conflict, Forbidden, TooManyRequests, Unauthorized, ValidationFailed
@@ -91,7 +92,7 @@ class AuthService:
         session_id = await self.sessions.start_session(
             user_id=row["id"], token_version=row["token_version"], now=self.ctx.now,
             expires_at=fmt_ts(datetime.fromtimestamp(expires, timezone.utc)), ip=self.ctx.client_ip,
-            user_agent=(self.ctx.user_agent or "")[:300] or None,
+            user_agent=(self.ctx.user_agent or "")[:300] or None, place=self.ctx.place,
         )
         claims = {"sub": str(row["id"]), "role": role, "ver": row["token_version"], "sid": session_id, "iat": now, "exp": expires}
         return create_token(claims, config.jwt_secret), expires, session_id
@@ -183,6 +184,7 @@ class AuthService:
         updated = {**row, "token_version": version, "must_change_password": 0}
         token, expires, session_id = await self.issue_token(updated, remember=False)
         self.ctx.log("PASSWORD_CHANGED", "Changed their password (other devices signed out)", session_id=session_id)
+        self.ctx.live(realtime.message([f"user:{user.id}"], {"type": "signed_out"}, except_=[f"sid:{user.session_id}"], close=True))
         return {"token": token, "expires_at": expires, "user": user_out(updated)}
 
     async def logout_everywhere(self, user: CurrentUser) -> None:
@@ -190,12 +192,33 @@ class AuthService:
         await self.ctx.db.run(*self.sessions.end_user_sessions_stmt(user.id, "LOGOUT_ALL", self.ctx.now))
         forget_user(user.id)
         self.ctx.log("LOGOUT_ALL", "Signed out on every device")
+        self.ctx.live(realtime.message([f"user:{user.id}"], {"type": "signed_out"}, close=True))
 
     async def logout(self, user_id: int, session_id: int | None) -> None:
         """This device signs out (its session ends; the cookie is cleared by the route)."""
         if session_id and await self.sessions.end_session(session_id, "LOGOUT", self.ctx.now):
             forget_device(session_id)
             self.ctx.log("LOGOUT", "Signed out", user_id=user_id, session_id=session_id)
+            self.ctx.live(realtime.message([f"sid:{session_id}"], {"type": "signed_out"}, close=True))
+
+    async def share_location(self, user: CurrentUser, lat: float, lng: float, accuracy_m: int | None) -> dict[str, Any]:
+        """This device's GPS position (sent when the app opens and as it moves). Admins see it live
+        on the Security page; the first fix of a sign-in is also written to the activity log."""
+        session_id = user.session_id
+        if not session_id:
+            raise Unauthorized("Please sign in again.", code="SESSION_EXPIRED")
+        device = await self.sessions.get_session(session_id)
+        if not device or device["ended_at"]:
+            raise Unauthorized("This device was signed out. Please sign in again.", code="SESSION_EXPIRED")
+        now = self.ctx.now
+        await self.sessions.set_location(session_id, lat=round(lat, 6), lng=round(lng, 6), accuracy_m=accuracy_m, now=now)
+        device_cache.set(session_id, {**device, "located_at": now, "last_seen_at": now})
+        if not device.get("located_at"):
+            place = ", ".join(p for p in (self.ctx.place.get("city"), self.ctx.place.get("region")) if p)
+            accuracy = f" (±{accuracy_m} m)" if accuracy_m is not None else ""
+            self.ctx.log("LOCATION_SHARED", f"Shared device location{accuracy}", category="Security", target=place or None)
+        self.ctx.live(realtime.changed(["role:ADMIN"], ["security"]))
+        return {"located_at": iso_z(now)}
 
     # -- first-run setup ---------------------------------------------------------------------------
     async def setup_status(self) -> dict[str, bool]:

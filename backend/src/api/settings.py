@@ -70,6 +70,8 @@ async def public_config(ctx: Ctx = Depends(public_ctx)) -> FastJSON:
             "country_code": ctx.config.default_country_code,
             # GST included in plan prices, shown as a breakdown when billing.
             "gst_rate": int(settings["gst_rate"] or 0),
+            # Signed-in devices must share their location (the app asks before anything else).
+            "location_required": bool(settings["location_required"]),
         }
     )
 

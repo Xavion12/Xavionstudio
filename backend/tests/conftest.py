@@ -19,7 +19,7 @@ from core.clock import Clock  # noqa: E402
 from core.config import load_config  # noqa: E402
 from core.database.sqlite import SQLiteDatabase  # noqa: E402
 from security.passwords import hash_password_sync  # noqa: E402
-from core import runtime  # noqa: E402
+from core import realtime, runtime  # noqa: E402
 from services import dashboard_service, message_service, settings_service  # noqa: E402
 from utils import http  # noqa: E402
 from services.auth_service import device_cache, session_cache  # noqa: E402
@@ -59,6 +59,9 @@ def outgoing(monkeypatch):
 def db():
     database = SQLiteDatabase(":memory:")
     database.apply_migrations(ROOT / "migrations")
+    # Location sharing is compulsory in the app; tests about it turn it back on (test_location.py).
+    database.conn.execute("INSERT INTO settings (key, value) VALUES ('location_required', '0')")
+    realtime.local_hub.sent.clear()
     settings_service.invalidate_cache()
     dashboard_service._history.clear()
     session_cache.clear()

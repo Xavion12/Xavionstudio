@@ -14,6 +14,7 @@ dev = [
     "pytest",
     "httpx",
     "uvicorn",
+    "websockets",  # local dev server only: live updates over WebSocket (production uses a Durable Object)
 ]
 
 [tool.pytest.ini_options]

@@ -54,6 +54,8 @@ export interface PublicConfig {
   country_code?: string
   /** GST % included in plan prices (0 = none). */
   gst_rate?: number
+  /** Every signed-in device must share its location to use the app. */
+  location_required?: boolean
 }
 
 export interface CoverageInfo {
@@ -531,6 +533,7 @@ export interface GymSettings {
   notify_activation: boolean
   notify_renewal: boolean
   notify_trainer: boolean
+  location_required: boolean
   attendance_checkout: boolean
   attendance_grace_days: number
   attendance_cooldown_minutes: number
@@ -803,6 +806,8 @@ export interface SecurityUnlock {
 }
 
 export interface SecurityOverview {
+  /** devices with the app open right now */
+  online: number
   devices: number
   people: number
   roles: { role: Role; label: string; devices: number; people: number }[]
@@ -825,6 +830,12 @@ export interface DeviceSession {
   expires_at: string
   /** the device the admin is using now */
   current: boolean
+  /** the app is open on it right now (live connection) */
+  online: boolean
+  /** GPS fix from the device */
+  location: { lat: number; lng: number; accuracy_m: number | null; at: string | null } | null
+  /** city, region, country from the network at sign-in */
+  place: string | null
 }
 
 export interface ActivityEntry {

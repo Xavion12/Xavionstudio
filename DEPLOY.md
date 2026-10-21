@@ -108,11 +108,19 @@ and the API share one address.
 
 ## 6. Deploy
 
+First the small live-updates Worker (WebSockets; the main Worker connects to it, so it goes first),
+then the app + API:
+
 ```bash
+cd ../realtime
+npx wrangler deploy
 cd ../backend
 uv sync
 uv run pywrangler deploy
 ```
+
+`xavion-realtime` has no web address of its own: it is reached only through the main Worker.
+It uses a SQLite-backed Durable Object, which is included in the Workers Free plan.
 
 The output ends with:
 
@@ -133,6 +141,13 @@ It answers `{"status":"ok",...}`. Then open **https://app.xavionfitness.in** in 
 
 > If your Mac says the address can't be found right after deploying, its DNS cache is stale:
 > `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`, or try your phone on mobile data.
+
+### 6b. City names for signed-in devices (once, free)
+
+The Security page shows each device's GPS location and the city it signed in from. For the city,
+turn on Cloudflare's visitor location headers: **Cloudflare dashboard → xavionfitness.in → Rules →
+Settings → Managed Transforms → "Add visitor location headers" → On**. (Without it you still get
+the GPS position and the country.)
 
 ## 7. Create the admin account
 

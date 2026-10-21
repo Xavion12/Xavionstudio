@@ -34,6 +34,16 @@ class Ctx:
     def user_agent(self) -> str | None:
         return (self.state or {}).get("user_agent")
 
+    @property
+    def place(self) -> dict[str, str | None]:
+        """City / region / country of the request from Cloudflare's network data."""
+        return (self.state or {}).get("place") or {}
+
+    def live(self, *messages: dict[str, Any]) -> None:
+        """Push live updates (core/realtime.py) to open apps once this request has finished."""
+        if self.state is not None:
+            self.state.setdefault("live", []).extend(messages)
+
     def log(self, action: str, summary: str, *, user_id: int | None = None, category: str = "Sign-in",
             target: str | None = None, session_id: int | None = None) -> None:
         """Add an activity-log entry; the edge middleware writes it after the response (also on errors,

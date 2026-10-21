@@ -25,8 +25,17 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(messag
 app = create_app()
 
 
+REALTIME_PATH = "/api/realtime/connect"
+
+
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
+        if REALTIME_PATH in str(request.url):
+            # Live updates: the WebSocket goes to the realtime Durable Object (core/realtime.py).
+            from core import realtime
+            from core.config import config_from_worker_env
+
+            return await realtime.connect_in_worker(request, self.env, config_from_worker_env(self.env).jwt_secret)
         return await asgi.fetch(app, request, self.env, self.ctx)
 
     async def scheduled(self, controller, env=None, ctx=None):

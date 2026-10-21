@@ -82,7 +82,7 @@ function smartgymPwa(apiUrl: string): Plugin {
           '  X-Content-Type-Options: nosniff',
           '  X-Frame-Options: DENY',
           '  Referrer-Policy: strict-origin-when-cross-origin',
-          '  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()',
+          '  Permissions-Policy: camera=(self), microphone=(), geolocation=(self), payment=()',
           '',
           // Share links (receipts / reports opened from WhatsApp): never indexed, and the
           // signed link is never sent to another site in a Referer header.
@@ -120,7 +120,7 @@ export default defineConfig(({ mode }) => {
     },
     // With VITE_API_URL empty the app calls /api on its own origin; the dev server forwards
     // those calls to the local Worker, the same shape as the app.xavionfitness.in/api/* requests in production.
-    server: { port: 5173, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8787' } },
+    server: { port: 5173, strictPort: true, proxy: { '/api': { target: 'http://127.0.0.1:8787', ws: true } } },
     preview: { port: 4173 },
     build: {
       target: 'es2022',

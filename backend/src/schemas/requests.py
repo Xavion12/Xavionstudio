@@ -25,6 +25,12 @@ class LoginIn(Model):
     remember: bool = False
 
 
+class LocationIn(Model):
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    accuracy: float | None = Field(None, ge=0, le=1_000_000)
+
+
 class ChangePasswordIn(Model):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)

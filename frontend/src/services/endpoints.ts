@@ -141,6 +141,7 @@ export const authApi = {
   changePassword: (current_password: string, new_password: string) =>
     post<AuthResponse>('/auth/change-password', { current_password, new_password }),
   logout: () => post<void>('/auth/logout'),
+  shareLocation: (body: { lat: number; lng: number; accuracy: number | null }) => post<{ located_at: string }>('/auth/location', body),
   logoutAll: () => post<void>('/auth/logout-all'),
   publicConfig: () => get<PublicConfig>('/config'),
   setupStatus: () => get<{ needs_setup: boolean; setup_enabled: boolean }>('/auth/setup-status'),

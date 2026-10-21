@@ -14,9 +14,15 @@ export const api = axios.create({ baseURL: `${API_BASE}/api`, timeout: 20_000, w
 
 let unauthorizedHandler: (() => void) | null = null
 let passwordChangeHandler: (() => void) | null = null
+let locationHandler: (() => void) | null = null
 
 export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler
+}
+
+/** The gym requires this device's location before anything else (HTTP 428). */
+export function onLocationRequired(handler: (() => void) | null): void {
+  locationHandler = handler
 }
 
 export function onPasswordChangeRequired(handler: () => void): void {
@@ -73,6 +79,7 @@ api.interceptors.response.use(
     const isLogin = error.config?.url?.includes('/auth/login')
     if (normalized.status === 401 && !isLogin) unauthorizedHandler?.()
     if (normalized.code === 'PASSWORD_CHANGE_REQUIRED') passwordChangeHandler?.()
+    if (normalized.code === 'LOCATION_REQUIRED') locationHandler?.()
     return Promise.reject(normalized)
   },
 )

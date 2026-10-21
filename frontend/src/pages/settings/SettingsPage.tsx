@@ -17,6 +17,7 @@ import {
   Smartphone,
   Sun,
   Users,
+  MapPin,
 } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
@@ -82,7 +83,7 @@ function useSave() {
       // Use what the server saved everywhere at once: this screen, the header, page titles,
       // the member app and money formatting — without a re-read that could meet an older copy.
       setCached('settings', fresh)
-      applyConfig({ gym_name: fresh.gym_name, currency: fresh.currency, member_code_prefix: fresh.member_code_prefix, gst_rate: Number(fresh.gst_rate ?? 0) })
+      applyConfig({ gym_name: fresh.gym_name, currency: fresh.currency, member_code_prefix: fresh.member_code_prefix, gst_rate: Number(fresh.gst_rate ?? 0), location_required: !!fresh.location_required })
       invalidate('dashboard', 'storage', 'reports')
       toast.success('Settings saved', { description: 'gym_name' in changes ? `Now showing “${fresh.gym_name}” everywhere.` : undefined })
     } catch (error) {
@@ -121,6 +122,30 @@ function NumberSetting({ label, hint, value, min, max, error, onChange, suffix }
       hint={hint}
       error={error}
     />
+  )
+}
+
+function LocationCard({ settings }: { settings: GymSettings }) {
+  const { draft, set, changed, dirty, reset } = useDraft(settings, ['location_required'])
+  const { save, saving, errors } = useSave()
+  return (
+    <Card>
+      <CardHeader
+        icon={MapPin}
+        title="Device location"
+        description="Where each phone or computer using the app is. The admin sees it live on the Security page; it’s kept up to 90 days after the device signs out."
+      />
+      <div className="px-5 pb-5">
+        <Switch
+          label="Location is required to use the app"
+          description="Admin, staff, trainers and members must allow location (GPS) before any screen opens, and keep it on while using the app. Members are told why first."
+          checked={!!draft.location_required}
+          onChange={(v) => set('location_required', v)}
+        />
+        {errors.location_required && <p className="mt-2 text-[13px] text-danger-600">{errors.location_required}</p>}
+      </div>
+      <SaveBar dirty={dirty} saving={saving} onReset={reset} onSave={() => save(changed)} />
+    </Card>
   )
 }
 
@@ -643,7 +668,13 @@ export default function SettingsPage() {
   else if (tab === 'notifications') body = <NotificationsTab settings={settings.data} />
   else if (tab === 'attendance') body = <AttendanceTab settings={settings.data} />
   else if (tab === 'data') body = <DataTab settings={settings.data} />
-  else body = <GymTab settings={settings.data} />
+  else
+    body = (
+      <div className="space-y-4">
+        <GymTab settings={settings.data} />
+        <LocationCard settings={settings.data} />
+      </div>
+    )
   return (
     <div>
       <PageHeader title="Settings" description="Your gym’s profile, payments, notifications and data rules" />

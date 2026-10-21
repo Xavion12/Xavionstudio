@@ -31,6 +31,7 @@ from api import (
     portal,
     progress,
     public,
+    realtime as realtime_api,
     reports,
     security,
     settings,
@@ -40,7 +41,7 @@ from api import (
     workouts,
 )
 from api.responses import FastJSON
-from core import runtime
+from core import realtime, runtime
 from core.clock import Clock
 from core.config import AppConfig, ConfigError, config_from_worker_env
 from core.database import Database, DatabaseError, IntegrityError
@@ -55,7 +56,7 @@ MAX_BODY_BYTES = 256 * 1024
 BODY_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 DOC_PATHS = {"/api/docs", "/api/docs/oauth2-redirect", "/api/openapi.json"}
 ROUTERS = (auth, users, members, trainers, plans, memberships, payments, attendance, workouts, progress, notifications,
-           expenses, reports, dashboard, backups, storage, settings, portal, messages, public, security)
+           expenses, reports, dashboard, backups, storage, settings, portal, messages, public, security, realtime_api)
 
 ConfigProvider = Callable[[dict], AppConfig]
 DbProvider = Callable[[dict, AppConfig], Database]
@@ -103,6 +104,14 @@ class EdgeMiddleware:
         self.db_provider = db_provider
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] == "websocket":
+            # Local development only (production sockets go to the realtime Durable Object).
+            try:
+                scope["state"] = {**(scope.get("state") or {}), "config": self.config_provider(scope)}
+            except ConfigError:
+                return
+            await self.app(scope, receive, send)
+            return
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -176,6 +185,10 @@ class EdgeMiddleware:
         state.update(
             db=db, config=config, user_agent=(headers.get("user-agent") or "")[:300] or None,
             client_ip=headers.get("cf-connecting-ip") or (client[0] if client else None),
+            # Cloudflare's network location (city / region need the "Add visitor location headers"
+            # Managed Transform; the country header is always there).
+            place={"city": (headers.get("cf-ipcity") or "")[:80] or None, "region": (headers.get("cf-region") or "")[:80] or None,
+                   "country": (headers.get("cf-ipcountry") or "")[:8] or None},
         )
         scope["state"] = state
         response_started = False
@@ -225,12 +238,32 @@ class EdgeMiddleware:
                 entries.append(row)
         if entries:
             await runtime.run_in_background(_write_activity(db, entries), "activity log")
+        live = list(state.get("live") or []) + realtime_messages(entries)
+        if live:
+            # Open apps refresh the screens this change affects at once (WebSocket, core/realtime.py).
+            await runtime.run_in_background(realtime.publish(scope.get("env"), live), "live updates")
         if state.get("messages_queued"):
             # The request has committed its WhatsApp / email rows: send them now, after the
             # response (the every-minute job retries anything that fails here).
             from jobs.scheduler import send_messages  # noqa: PLC0415 - avoids an import cycle
 
             await runtime.run_in_background(send_messages(db, config, now=True), "send messages")
+
+
+def realtime_messages(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Live updates for logged changes: the admin's Security page, and the team's screens showing
+    the kind of data that changed. The device that made the change already shows it."""
+    if not entries:
+        return []
+    out = [realtime.changed(["role:ADMIN"], ["security"])]
+    for entry in entries:
+        topics = realtime.TOPICS_BY_CATEGORY.get(entry["category"])
+        if topics:
+            skip = [f"sid:{entry['session_id']}"] if entry.get("session_id") else []
+            msg = realtime.changed(realtime.TEAM_TAGS, topics)
+            msg["except"] = skip
+            out.append(msg)
+    return out
 
 
 async def _write_activity(db: Database, entries: list[dict[str, Any]]) -> None:
